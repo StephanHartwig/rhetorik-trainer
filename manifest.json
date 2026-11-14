@@ -1,0 +1,11 @@
+{
+  "name": "Rhetorik-Trainer",
+  "short_name": "Rhetorik",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101418",
+  "theme_color": "#101418"
+}

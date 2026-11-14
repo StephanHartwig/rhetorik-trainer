@@ -1,0 +1,9 @@
+# Nichts Persönliches ins öffentliche Repository
+STARTPROMPT_Rhetorik_Trainer.md
+COACH_Projektanweisung.md
+.claude/
+.DS_Store
+*.mp4
+*.mov
+*.m4a
+*.webm
