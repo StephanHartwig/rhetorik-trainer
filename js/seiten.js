@@ -1,13 +1,13 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=13';
-import { fmtZeit, laden } from './store.js?v=13';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=13';
-import { koerperMessen } from './koerper.js?v=13';
-import { coachTeil } from './coach.js?v=13';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=13';
-import { messen, MODELLE } from './messung.js?v=13';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=13';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=13';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=14';
+import { fmtZeit, laden } from './store.js?v=14';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=14';
+import { koerperMessen } from './koerper.js?v=14';
+import { coachTeil } from './coach.js?v=14';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=14';
+import { messen, MODELLE, luftHolen } from './messung.js?v=14';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=14';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=14';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -72,6 +72,16 @@ function messTeil(u, ruhe) {
   if (weiter) lauf.weg();
   const absturz = weiter ? null : absturzPruefen();
   let fehlerText = '', autoStart = weiter && rest.id === u.id;
+  // Stürzt die App beim Transkript ab, lädt das iPhone die Seite neu. Dann geht es hier von selbst weiter:
+  // zweiter Versuch mit demselben Modell (der Speicher ist jetzt frei), dritter mit dem schnellen.
+  let tonVersuch = 1, tonErsatz = false, autoText = '';
+  if (absturz && absturz.id === u.id && absturz.phase === 'ton' && absturz.alter < 240000 && absturz.versuch < 3) {
+    tonVersuch = absturz.versuch + 1;
+    tonErsatz = tonVersuch === 3 && absturz.modell === 'gross';
+    autoStart = true;
+    autoText = tonErsatz ? 'Das genaue Transkript wurde zweimal unterbrochen. Die App macht von selbst mit dem schnellen Transkript weiter.'
+      : 'Die App wurde beim Transkript unterbrochen und macht von selbst weiter (Versuch ' + tonVersuch + ' von 3).';
+  }
   const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
   const zahl = (x, einheit = '') => (x == null ? 'nicht messbar' : String(x).replace('.', ',') + einheit);
   // neu = true: alles neu messen. Sonst nur, was noch fehlt.
@@ -110,23 +120,26 @@ function messTeil(u, ruhe) {
           }
         }
         if (mitTon) {
-          lauf.setze({ id: u.id, phase: 'ton', modell: wahl });
-          await messen(u, melde(2), wahl);
-          lauf.weg();
+          const marke = { id: u.id, phase: 'ton', modell: wahl, versuch: tonVersuch };
+          lauf.setze(marke);
+          const sag = melde(2);
+          if (weiter || tonVersuch > 1) { sag('Gebe Arbeitsspeicher frei …'); await luftHolen(1500); }
+          await messen(u, (t) => { lauf.setze(marke); sag(t); }, tonErsatz ? 'mittel' : wahl, { ersatz: tonErsatz });
+          lauf.weg(); autoText = ''; tonVersuch = 1; tonErsatz = false;
         }
         if (ruhe) ruhe.nach();
         zeichne();
       } catch (e) {
         lauf.weg(); if (ruhe) ruhe.nach();
         // Was schon gemessen ist, zeigen; die Fehlermeldung bleibt darüber stehen
-        fehlerText = 'Die Messung hat nicht geklappt: ' + e.message; zeichne();
+        autoText = ''; fehlerText = 'Die Messung hat nicht geklappt: ' + e.message; zeichne();
       }
       wachAus();
     })();
   }
   function zeichne() {
     const m = u.messung, stand = h('div', { class: 'hinweis' });
-    const warnung = [absturz && absturz.id === u.id ? h('p', { class: 'warn' }, absturz.text) : null, fehlerText ? h('p', { class: 'hinweis fehler' }, fehlerText) : null];
+    const warnung = [autoText ? h('p', { class: 'warn' }, autoText) : absturz && absturz.id === u.id ? h('p', { class: 'warn' }, absturz.text) : null, fehlerText ? h('p', { class: 'hinweis fehler' }, fehlerText) : null];
     fehlerText = '';
     if (!m) {
       const mo = MODELLE[laden().transkript] || MODELLE.mittel;

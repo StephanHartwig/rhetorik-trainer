@@ -1,7 +1,7 @@
 // Arbeits-Thread für die Messung: erst die Stimme, dann das Transkript mit Whisper.
 // Läuft getrennt von der Oberfläche, damit die App bedienbar bleibt.
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.min.js';
-import { stimmAnalyse } from './analyse.js?v=13';
+import { stimmAnalyse } from './analyse.js?v=14';
 
 // Whisper erfindet bei Stille manchmal solche Sätze. Sie werden verworfen.
 const ERFUNDEN = /untertitel|amara\.org|vielen dank fürs zuschauen|bis zum nächsten mal|copyright|im auftrag des/i;
@@ -13,6 +13,7 @@ self.onmessage = async (e) => {
     self.postMessage({ typ: 'stimme', stimme: werte, fenster: fenster.length });
     const asr = await pipeline('automatic-speech-recognition', modell, {
       device: 'wasm', dtype: 'q8',
+      session_options: { enableCpuMemArena: false, enableMemPattern: false },   // weniger Arbeitsspeicher, etwas langsamer
       progress_callback: (p) => { if (p.status === 'progress') self.postMessage({ typ: 'laden', pct: p.progress }); },
     });
     self.postMessage({ typ: 'modell' });

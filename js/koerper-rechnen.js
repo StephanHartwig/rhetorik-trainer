@@ -74,7 +74,7 @@ export function koerperAuswerten(proben, modus, dauer) {
   } else {
     werte.erkannt = anteil(proben.filter((p) => p.gesicht).length, proben.length);
     if (gesichter.length < Math.max(5, proben.length * 0.5)) {
-      hinweise.push('Das Gesicht war nur in ' + werte.erkannt + ' % der Bilder zu erkennen. Blick und Mimik sind deshalb nicht messbar.');
+      hinweise.push('Das Gesicht war nur in ' + werte.erkannt + ' % der Bilder zu erkennen. Blick und Mimik sind deshalb nicht messbar. Mehr Licht von vorn und ein Gesicht, das ganz im Bild ist, helfen.');
       werte.blick = null; werte.mimikUnsicher = true;
     } else {
       werte.blick = anteil(gesichter.filter((p) => blickNah(p.gesicht)).length, gesichter.length);

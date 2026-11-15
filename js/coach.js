@@ -1,8 +1,8 @@
 // Ergebnisseite, Teil „Auswertung“: Paket an die Claude-App teilen, Ergebniscode des Coachs einfügen.
-import { h, fuelle } from './ui.js?v=13';
-import { fmtZeit } from './store.js?v=13';
-import { paketText, codeLesen } from './auswertung.js?v=13';
-import { bilderLaden, uebungSpeichern } from './db.js?v=13';
+import { h, fuelle } from './ui.js?v=14';
+import { fmtZeit } from './store.js?v=14';
+import { paketText, codeLesen } from './auswertung.js?v=14';
+import { bilderLaden, uebungSpeichern } from './db.js?v=14';
 
 const PUNKT = { 1: 'erfüllt', 0.5: 'teilweise', 0: 'fehlt' };
 

@@ -4,7 +4,7 @@ const K_LAUF = 'rt.messlauf', K_MODUS = 'rt.koerperModus';
 
 export const lauf = {
   lies() { try { return JSON.parse(localStorage.getItem(K_LAUF)); } catch (e) { return null; } },
-  setze(o) { try { localStorage.setItem(K_LAUF, JSON.stringify(o)); } catch (e) {} },
+  setze(o) { try { localStorage.setItem(K_LAUF, JSON.stringify({ ...o, zeit: Date.now() })); } catch (e) {} },
   weg() { try { localStorage.removeItem(K_LAUF); } catch (e) {} },
 };
 // 'gpu' = normal, 'cpu' = sparsam, 'aus' = Körpermessung abgeschaltet
@@ -26,5 +26,6 @@ export function absturzPruefen() {
     setzeKoerperModus('aus');
     return { id: r.id, text: 'Die Körpermessung wurde auch in der sparsamen Betriebsart unterbrochen' + wo + '. Sie ist jetzt ausgeschaltet. Ton und Transkript werden weiter gemessen. Bitte noch einmal antippen.' };
   }
-  return { id: r.id, text: 'Der letzte Versuch wurde während des Transkripts unterbrochen' + (r.modell === 'gross' ? '. Wenn das wieder passiert, stelle in den Einstellungen das Transkript auf „schnell“.' : '.') + ' Bitte noch einmal antippen.' };
+  return { id: r.id, phase: 'ton', versuch: r.versuch || 1, modell: r.modell, alter: Date.now() - (r.zeit || 0),
+    text: 'Der letzte Versuch wurde während des Transkripts unterbrochen' + (r.modell === 'gross' ? '. Wenn das wieder passiert, stelle in den Einstellungen das Transkript auf „schnell“.' : '.') + ' Bitte noch einmal antippen.' };
 }

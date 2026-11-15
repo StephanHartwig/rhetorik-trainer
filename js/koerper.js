@@ -1,7 +1,7 @@
 // Körpermessung am gespeicherten Video: Bild für Bild Körper und Gesicht erkennen, auswerten, Einzelbilder ablegen.
-import { poseLaden, gesichtLaden } from './geraet.js?v=13';
-import { aufnahmeDatei, uebungSpeichern, bildSpeichern, bilderLoeschen } from './db.js?v=13';
-import { koerperAuswerten, bildZeiten } from './koerper-rechnen.js?v=13';
+import { poseLaden, gesichtLaden } from './geraet.js?v=14';
+import { aufnahmeDatei, uebungSpeichern, bildSpeichern, bilderLoeschen } from './db.js?v=14';
+import { koerperAuswerten, bildZeiten } from './koerper-rechnen.js?v=14';
 
 const pause = () => new Promise((r) => setTimeout(r, 0));
 
@@ -69,7 +69,13 @@ export async function koerperMessen(u, melde, opt = {}) {
     const fx = v.videoWidth / w;                      // Umrechnung Leinwand → Videobild
 
     const proben = [];
-    let fehlSpruenge = 0;
+    let fehlSpruenge = 0, poseNah = null, poseFehlt = false, ausschnitte = 0;
+    // Zeichnet den Bereich um den Kopf vergrößert in die kleine Leinwand (sw = Schulterbreite in Leinwand-Punkten)
+    const kopfBild = (L, sw) => {
+      const seite = Math.max(1.3 * sw, 48) * fx, cx = L[0].x * v.videoWidth, cy = L[0].y * v.videoHeight;
+      kctx.clearRect(0, 0, 256, 256);
+      kctx.drawImage(v, cx - seite / 2, cy - seite / 2, seite, seite, 0, 0, 256, 256);
+    };
     for (let i = 0; i < anzahl; i++) {
       const t = (i + 0.5) * schritt;
       if (!(await springe(v, t))) {
@@ -90,12 +96,22 @@ export async function koerperMessen(u, melde, opt = {}) {
             haende: [15, 16].map((k) => ({ x: X(k), y: Y(k), v: L[k].visibility === undefined ? 1 : (L[k].x < 0 || L[k].x > 1 || L[k].y < 0 || L[k].y > 1 ? 0 : L[k].visibility) })),
           };
           // Das Gesicht ist aus der Entfernung klein: Ausschnitt um den Kopf vergrößert prüfen
-          const seite = Math.max(1.3 * sw, 48) * fx, cx = L[0].x * v.videoWidth, cy = L[0].y * v.videoHeight;
-          kctx.drawImage(v, cx - seite / 2, cy - seite / 2, seite, seite, 0, 0, 256, 256);
+          kopfBild(L, sw);
           probe.gesicht = gesichtWerte(gesicht.detect(kopf));
         }
       } else {
         probe.gesicht = gesichtWerte(gesicht.detect(cv));
+        if (!probe.gesicht && !poseFehlt) {
+          // Gesicht klein, dunkel oder angeschnitten: den Kopf über die Körpererkennung suchen und vergrößert prüfen
+          if (!poseNah) { try { poseNah = await poseLaden(!!opt.cpu); } catch (e) { poseFehlt = true; } }
+          const L = poseNah ? poseNah.detect(cv).landmarks[0] : null;
+          if (L) {
+            const breit = Math.hypot((L[11].x - L[12].x) * w, (L[11].y - L[12].y) * hh), ohren = Math.hypot((L[7].x - L[8].x) * w, (L[7].y - L[8].y) * hh);
+            kopfBild(L, Math.max(breit, ohren * 2.2));
+            probe.gesicht = gesichtWerte(gesicht.detect(kopf));
+            if (probe.gesicht) ausschnitte++;
+          }
+        }
       }
       proben.push(probe);
       if (i % 5 === 0) { melde('Körper: Bild ' + (i + 1) + ' von ' + anzahl); if (opt.beiBild) opt.beiBild(i + 1, anzahl); await pause(); }
@@ -118,7 +134,7 @@ export async function koerperMessen(u, melde, opt = {}) {
       await bildSpeichern(u.id, bilder.length, blob);
       bilder.push({ t: z.t, grund: z.grund });
     }
-    u.koerper = { ...werte, hinweise, fehlSpruenge, sparsam: !!opt.cpu, schritt: Math.round(schritt * 100) / 100, datum: new Date().toISOString() };
+    u.koerper = { ...werte, hinweise, fehlSpruenge, ausschnitte, sparsam: !!opt.cpu, schritt: Math.round(schritt * 100) / 100, datum: new Date().toISOString() };
     u.bilder = bilder;
     await uebungSpeichern(u);
     return u;

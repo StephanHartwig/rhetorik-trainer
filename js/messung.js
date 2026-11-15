@@ -1,6 +1,6 @@
 // Messung einer Übung: Ton laden, im Arbeits-Thread messen und transkribieren, Ergebnis speichern.
-import { pcmLaden, aufnahmeDatei, uebungSpeichern } from './db.js?v=13';
-import { sprachAnalyse } from './analyse.js?v=13';
+import { pcmLaden, aufnahmeDatei, uebungSpeichern } from './db.js?v=14';
+import { sprachAnalyse } from './analyse.js?v=14';
 
 // Zwei Transkript-Modelle: schnell oder genau. minJeMin = geschätzte Rechenzeit je Redeminute (iPhone 16 Pro).
 export const MODELLE = {
@@ -35,7 +35,7 @@ async function tonLaden(u) {
 
 function einLauf(audio, dauer, melde, modell) {
   return new Promise((ja, nein) => {
-    const w = new Worker('js/mess-worker.js?v=13', { type: 'module' });
+    const w = new Worker('js/mess-worker.js?v=14', { type: 'module' });
     let wache, stimme = null, geladen = false;
     const ende = (fn, wert) => { clearTimeout(wache); w.terminate(); fn(wert); };
     const stelleWache = () => { clearTimeout(wache); wache = setTimeout(() => ende(nein, Object.assign(new Error('haengt'), { haengt: true, geladen })), modell.stillMax); };
@@ -78,13 +78,14 @@ async function mitGeduld(audio, dauer, melde, modell) {
 }
 
 // Misst die Übung und speichert das Ergebnis in der Übung. melde(text) zeigt den Fortschritt.
-export async function messen(u, melde, wahl) {
+// opt.ersatz: das schnelle Modell wird nur ersatzweise benutzt (wird im Ergebnis vermerkt)
+export async function messen(u, melde, wahl, opt = {}) {
   const modell = MODELLE[wahl] || MODELLE.mittel;
   melde('Lade den Ton …');
   const { audio, versatz } = await tonLaden(u);
   const dauer = Math.min(audio.length / 16000, Math.max(1, (u.ist || audio.length / 16000) - versatz + 0.5));
   if (dauer < 2) throw new Error('Die Aufnahme ist zu kurz für eine Messung.');
-  let erg, benutzt = modell, ersatz = false;
+  let erg, benutzt = modell, ersatz = !!opt.ersatz;
   try { erg = await mitGeduld(audio, dauer, melde, modell); }
   catch (e) {
     if (e.haengt) throw new Error('Das Transkript-Modell startet nicht. Bitte die App ganz schließen, neu öffnen und noch einmal messen.');
