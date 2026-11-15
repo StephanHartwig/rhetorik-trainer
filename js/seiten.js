@@ -1,14 +1,14 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2002';
-import { fmtZeit, laden } from './store.js?v=2002';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2002';
-import { koerperMessen } from './koerper.js?v=2002';
-import { coachTeil } from './coach.js?v=2002';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2002';
-import * as I from './impulse.js?v=2002';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2002';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2002';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2002';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2003';
+import { fmtZeit, laden } from './store.js?v=2003';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2003';
+import { koerperMessen } from './koerper.js?v=2003';
+import { coachTeil } from './coach.js?v=2003';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2003';
+import * as I from './impulse.js?v=2003';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2003';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2003';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2003';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };

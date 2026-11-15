@@ -1,20 +1,20 @@
 // Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2002';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2002';
-import { ziehe } from './begriffe.js?v=2002';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=2002';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2002';
-import * as G from './geraet.js?v=2002';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2003';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2003';
+import { ziehe } from './begriffe.js?v=2003';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=2003';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2003';
+import * as G from './geraet.js?v=2003';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
 const UEBERZUG_MAX = 600;   // spätestens 10 Minuten nach dem Soll endet die Aufnahme von selbst
 
 const ART = {
-  rede: { titel: 'Stegreifrede', knopf: 'Begriff zeigen', satz: 'Der Begriff erscheint sofort. Kein Tauschen, kein Überspringen.' },
-  schlag: { titel: 'Schlagfertigkeit', knopf: 'Aussage zeigen', satz: 'Jemand sagt etwas Kritisches, Komisches oder Dummes zu dir. Die Aussage erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Reagiere direkt.' },
-  einwand: { titel: 'Einwand', knopf: 'Einwand zeigen', satz: 'Der Einwand erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte mit einem bildhaften Vergleich.' },
+  rede: { titel: 'Stegreifrede', tun: 'Halte eine Rede über diesen Begriff.', knopf: 'Begriff zeigen', satz: 'Der Begriff erscheint sofort. Kein Tauschen, kein Überspringen.' },
+  schlag: { titel: 'Schlagfertigkeit', tun: 'Reagiere sofort auf diese Aussage.', knopf: 'Aussage zeigen', satz: 'Jemand sagt etwas Kritisches, Komisches oder Dummes zu dir. Die Aussage erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Reagiere direkt.' },
+  einwand: { titel: 'Einwand', tun: 'Antworte mit einem bildhaften Vergleich.', knopf: 'Einwand zeigen', satz: 'Der Einwand erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte mit einem bildhaften Vergleich.' },
 };
 
 // opt.modus: 'rede' | 'schlag' | 'einwand'
@@ -104,6 +104,8 @@ export function redeAblauf(app, E, merke, opt = {}) {
     G.pcmVorbereiten().catch(() => {});       // Mitschnitt der Tonspur schon jetzt laden
 
     const status = h('div', { class: 'status' }, vorZeit ? 'Vorbereitung' : '');
+    // Was ist das für eine Übung, und was ist zu tun? Wichtig vor allem im Tagesprogramm, wo es vorher verdeckt ist.
+    const artZeile = h('div', { class: 'artZeile' }, h('b', {}, art.titel), art.tun);
     const uhr = h('div', { class: 'uhr' });
     const begriff = h('div', { class: 'begriff', lang: 'de' });
     const frageBox = h('div', { class: 'frage', hidden: true });
@@ -113,7 +115,7 @@ export function redeAblauf(app, E, merke, opt = {}) {
     const leinwand = document.createElement('canvas');
     video.classList.add('versteckt');
     document.body.classList.add('buehne');
-    fuelle(app, h('div', { class: 'buehne-innen' + (ganz ? ' ganz' : '') }, status, uhr, begriff, frageBox, h('div', { class: 'unten' }, handInfo, fertigKnopf, abbruch)), video);
+    fuelle(app, h('div', { class: 'buehne-innen' + (ganz ? ' ganz' : '') }, status, artZeile, uhr, begriff, frageBox, h('div', { class: 'unten' }, handInfo, fertigKnopf, abbruch)), video);
 
     const passe = (max) => {
       const laenge = Math.min(14, Math.max(...b.text.split(/[\s-]+/).map((w) => w.length)));

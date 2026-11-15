@@ -214,3 +214,9 @@ input.text[type="password"] { font-family: ui-monospace, Menlo, monospace; font-
 .noteGross { font-size: 54px; font-weight: 800; line-height: 1.1; margin: 6px 0 8px; }
 .noteGross span { font-size: 17px; font-weight: 600; color: var(--grau); margin-right: 12px; }
 details.klapp.gruppe > summary ~ * { margin-top: 8px; }
+
+/* Bühne: Art der Übung und Auftrag */
+.artZeile { color: #fff; font-size: 5vw; line-height: 1.25; }
+.artZeile b { display: block; font-size: 6.5vw; color: var(--gelb); }
+.ganz .artZeile { font-size: 6vw; }
+.ganz .artZeile b { font-size: 8vw; }
