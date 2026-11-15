@@ -1,8 +1,9 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=17';
-import { fmtZeit } from './store.js?v=17';
-import { alleUebungen, speicherStand } from './db.js?v=17';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=17';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=18';
+import { fmtZeit } from './store.js?v=18';
+import { alleUebungen, speicherStand } from './db.js?v=18';
+import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=18';
+import { entwirren } from './auto.js?v=18';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -92,7 +93,7 @@ export async function startInfo(el) {
   let liste;
   try { liste = await alleUebungen(); } catch (e) { return; }
   if (!liste.length) return;
-  const s = serie(liste), aufgabe = aufgabeFuerMorgen(liste);
+  const s = serie(liste), aufgabe = entwirren(aufgabeFuerMorgen(liste));
   fuelle(el,
     h('div', { class: 'serie' }, s.tage ? s.tage + (s.tage === 1 ? ' Tag' : ' Tage') + ' in Folge geübt' + (s.heute ? '' : ' · heute noch offen') : 'Heute noch nicht geübt'),
     aufgabe ? h('div', { class: 'aufgabe' }, h('div', { class: 'grau' }, 'Aufgabe aus dem letzten Feedback'), aufgabe) : null);

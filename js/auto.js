@@ -1,6 +1,6 @@
 // Automatische Auswertung: Die App schickt das Auswertungspaket selbst an Claude (Anthropic-Schnittstelle).
 // Schlüssel, Coach-Anweisung und Modellwahl liegen nur auf diesem Gerät. Nichts davon steht im öffentlichen Code.
-import { paketText } from './auswertung.js?v=17';
+import { paketText } from './auswertung.js?v=18';
 
 const K_KEY = 'rt.api.schluessel', K_MODELL = 'rt.api.modell', K_COACH = 'rt.api.coach';
 const SDK = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.8.0/+esm';
@@ -15,13 +15,38 @@ export const AUTO_MODELLE = [
 const lies = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
 const schreib = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} };
 
+// Repariert Zeichensalat („erf√ºllt“ statt „erfüllt“): Er entsteht, wenn ein Text beim Kopieren mit der
+// falschen Zeichentabelle gelesen wurde. Gesunder Text bleibt unverändert.
+let macTabelle;
+export function entwirren(text) {
+  text = String(text || '');
+  if (!/√[^\s]|‚Ä|¬[^\s]/.test(text)) return text;
+  try {
+    if (!macTabelle) {
+      macTabelle = new Map();
+      const dec = new TextDecoder('macintosh');
+      for (let b = 128; b < 256; b++) macTabelle.set(dec.decode(new Uint8Array([b])), b);
+    }
+    const bytes = [], enc = new TextEncoder();
+    for (const z of text) {
+      const c = z.codePointAt(0);
+      if (c < 128) bytes.push(c);
+      else if (macTabelle.has(z)) bytes.push(macTabelle.get(z));
+      else bytes.push(...enc.encode(z));
+    }
+    const neu = new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+    // nur übernehmen, wenn es dadurch besser wurde
+    return (neu.match(/\uFFFD/g) || []).length <= 2 ? neu : text;
+  } catch (e) { return text; }
+}
+
 export const autoModell = () => AUTO_MODELLE.find((m) => m.id === lies(K_MODELL)) || AUTO_MODELLE[0];
 export const setzeAutoModell = (id) => schreib(K_MODELL, id);
 export const setzeSchluessel = (s) => schreib(K_KEY, String(s || '').trim());
-export const setzeCoach = (t) => schreib(K_COACH, String(t || '').trim());
-export const coachText = () => lies(K_COACH);
+export const setzeCoach = (t) => schreib(K_COACH, entwirren(t).trim());
+export const coachText = () => entwirren(lies(K_COACH));
 export function autoStand() {
-  const s = lies(K_KEY), c = lies(K_COACH);
+  const s = lies(K_KEY), c = coachText();
   return { schluessel: !!s, ende: s ? s.slice(-4) : '', coach: c.length, bereit: !!s && c.length > 200 };
 }
 
