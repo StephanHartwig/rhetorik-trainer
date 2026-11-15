@@ -129,3 +129,10 @@ table.werte td:last-child { text-align: right; font-weight: 700; font-variant-nu
 .fest { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom)); margin-top: 14px; z-index: 2; }
 .fest .gross { min-height: 92px; padding: 18px; box-shadow: 0 0 0 10px var(--bg); }
 .vorschau { max-height: 30vh; }
+
+/* Messwerte */
+.breit.blau { background: var(--blau2); border-color: var(--blau); color: #fff; }
+.gruppe .titel .grau { font-weight: 400; }
+details.gruppe summary { font-weight: 600; min-height: 32px; cursor: pointer; }
+.tzeile { margin: 8px 0; overflow-wrap: anywhere; }
+.tzeile .grau { font-variant-numeric: tabular-nums; }

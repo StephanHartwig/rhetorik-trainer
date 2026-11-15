@@ -24,14 +24,23 @@ function tx(speicher, modus, arbeit) {
     t.onabort = () => rej(t.error || new Error('Speichern abgebrochen'));
   }));
 }
-const bereich = (id) => IDBKeyRange.bound(id + ':', id + ':￿');
+const bereich = (id) => IDBKeyRange.bound(id + ':', id + ':\uffff');
 
 export const uebungSpeichern = (u) => tx('uebungen', 'readwrite', (s) => s.put(u));
 export const uebungLaden = (id) => tx('uebungen', 'readonly', (s) => s.get(id));
 export const alleUebungen = () => tx('uebungen', 'readonly', (s) => s.getAll()).then((l) => (l || []).sort((a, b) => (a.id < b.id ? 1 : -1)));
 export const stueckSpeichern = (id, n, blob) => tx('stuecke', 'readwrite', (s) => s.put(blob, id + ':' + String(n).padStart(5, '0')));
 export const stueckeLaden = (id) => tx('stuecke', 'readonly', (s) => s.getAll(bereich(id))).then((l) => l || []);
+const tonBereich = (id) => IDBKeyRange.bound(id + '#p:', id + '#p:\uffff');
+export const pcmSpeichern = (id, n, blob) => tx('stuecke', 'readwrite', (s) => s.put(blob, id + '#p:' + String(n).padStart(5, '0')));
+// Die mitgeschnittene Tonspur als Int16-Werte (16.000 je Sekunde), oder null
+export async function pcmLaden(id) {
+  const teile = await tx('stuecke', 'readonly', (s) => s.getAll(tonBereich(id)));
+  if (!teile || !teile.length) return null;
+  return new Int16Array(await new Blob(teile).arrayBuffer());
+}
 export async function uebungLoeschen(id) {
+  await tx('stuecke', 'readwrite', (s) => s.delete(tonBereich(id)));
   await tx('stuecke', 'readwrite', (s) => s.delete(bereich(id)));
   await tx('uebungen', 'readwrite', (s) => s.delete(id));
 }

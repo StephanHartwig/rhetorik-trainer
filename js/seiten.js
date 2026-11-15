@@ -1,8 +1,10 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=6';
-import { fmtZeit } from './store.js?v=6';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand } from './db.js?v=6';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=6';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=7';
+import { fmtZeit } from './store.js?v=7';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand } from './db.js?v=7';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=7';
+import { messen } from './messung.js?v=7';
+import { wachAn, wachAus } from './geraet.js?v=7';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -11,6 +13,66 @@ export function abweichung(u) {
   const d = Math.round(u.ist - u.soll), p = Math.round((u.ist - u.soll) / u.soll * 100);
   const vz = (x) => (x > 0 ? '+' : x < 0 ? '−' : '±') + Math.abs(x);
   return vz(d) + ' s (' + vz(p) + ' %)';
+}
+
+// ---------- Messwerte (Schätzungen des Geräts) ----------
+function messTeil(u) {
+  const box = h('div', {});
+  const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
+  const zahl = (x, einheit = '') => (x == null ? 'nicht messbar' : String(x).replace('.', ',') + einheit);
+  function starte(knopf, stand) {
+    knopf.disabled = true; stand.className = 'hinweis'; wachAn();
+    messen(u, (t) => { stand.textContent = t; }).then(zeichne)
+      .catch((e) => { stand.className = 'hinweis fehler'; stand.textContent = 'Die Messung hat nicht geklappt: ' + e.message; knopf.disabled = false; })
+      .finally(wachAus);
+  }
+  function zeichne() {
+    const m = u.messung, stand = h('div', { class: 'hinweis' });
+    if (!m) {
+      const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * 0.35 + 0.3));
+      const knopf = h('button', { class: 'breit blau', onclick: () => starte(knopf, stand) }, 'Messwerte berechnen');
+      fuelle(box, knopf,
+        h('p', { class: 'grau' }, 'Dauert etwa ' + min + (min === 1 ? ' Minute' : ' Minuten') + '. Die App dabei offen lassen. Beim ersten Mal lädt sie einmalig rund 80 MB, am besten im WLAN.'),
+        stand);
+      return;
+    }
+    const s = m.stimme, p = m.sprache;
+    const unsicher = (wert) => (s.unsicher ? 'unsicher' : wert);
+    const fuell = Object.entries(p.fuellEinzeln).sort((a, b) => b[1] - a[1]).map(([w, n]) => w + ' ' + n).join(', ');
+    const nochmal = h('button', { class: 'breit leise', onclick: () => starte(nochmal, stand) }, 'Messung wiederholen');
+    fuelle(box,
+      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Sprache', h('span', { class: 'grau' }, 'Schätzung')),
+        h('table', { class: 'werte' },
+          zeile('Wörter', String(p.woerter)),
+          zeile('Tempo', p.tempo + ' Wörter/Min.'),
+          zeile('Satzlänge im Schnitt', p.satzUnsicher || p.satzlaenge == null ? 'unsicher' : zahl(p.satzlaenge, ' Wörter')),
+          zeile('Wörter je Sprechabschnitt', s.unsicher ? 'unsicher' : zahl(p.woerterJeAbschnitt)),
+          zeile('Füllwörter', p.fuellGesamt + ' (' + zahl(p.fuellJeMinute) + ' je Minute)')),
+        fuell ? h('div', { class: 'hinweis' }, fuell) : null,
+        h('div', { class: 'hinweis' }, 'Ein Sprechabschnitt ist das Stück zwischen zwei Atempausen. Die Satzlänge hängt an den Satzzeichen des Transkripts und ist deshalb oft unsicher.'),
+        h('div', { class: 'hinweis' }, '„äh“ und „ähm“ verschluckt das Transkript oft. Der Wert für Füllwörter ist deshalb eher zu niedrig.')),
+      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Pausen', h('span', { class: 'grau' }, 'Schätzung')),
+        s.keineStimme ? h('div', { class: 'hinweis' }, 'Es wurde keine Stimme erkannt.') : h('table', { class: 'werte' },
+          zeile('Pausen ab 0,7 Sekunden', unsicher(String(s.pausen))),
+          zeile('davon ab 2 Sekunden', unsicher(String(s.pausenLang))),
+          zeile('Länge im Schnitt', unsicher(zahl(s.pausenMittel, ' s'))),
+          zeile('Längste Pause', unsicher(zahl(s.laengstePause, ' s') + (s.laengstePause ? ' bei ' + fmtZeit(s.laengstePauseBei) : ''))),
+          zeile('Sprechanteil', unsicher(s.sprechAnteil + ' %')),
+          zeile('Erste Worte nach', unsicher(zahl(s.ersteWorteNach, ' s')))),
+        s.unsicher ? h('div', { class: 'hinweis' }, 'Die Stimme hebt sich kaum vom Raumgeräusch ab. Pausen und Lautstärke lassen sich deshalb nicht verlässlich messen.') : null),
+      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Stimme', h('span', { class: 'grau' }, 'Schätzung')),
+        s.keineStimme ? h('div', { class: 'hinweis' }, 'Es wurde keine Stimme erkannt.') : h('table', { class: 'werte' },
+          zeile('Schwankung der Lautstärke', unsicher(zahl(s.lautSchwankung, ' dB'))),
+          zeile('Tonhöhe (Mitte)', zahl(s.tonhoehe, ' Hz')),
+          zeile('Schwankung der Tonhöhe', zahl(s.tonSchwankung, ' Halbtöne'))),
+        h('div', { class: 'hinweis' }, 'Größere Schwankung bedeutet mehr Wechsel in der Stimme. Vergleiche die Werte mit deinen eigenen früheren Reden.')),
+      h('details', { class: 'gruppe' }, h('summary', {}, 'Transkript anzeigen'),
+        u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
+        h('div', { class: 'hinweis' }, 'Automatisch erstellt. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
+      nochmal, stand);
+  }
+  zeichne();
+  return box;
 }
 
 // ---------- Ergebnis ----------
@@ -37,10 +99,11 @@ export function uebungSeite(app, id) {
           zeile('Abweichung', u.status === 'fertig' ? abweichung(u) : '–'),
           u.beendetDurch ? zeile('Beendet durch', ENDE[u.beendetDurch] || u.beendetDurch) : null)),
       u.fehler ? h('p', { class: 'hinweis fehler' }, 'Beim Speichern der Aufnahme gab es einen Fehler: ' + u.fehler) : null,
+      u.status === 'fertig' ? messTeil(u) : null,
       spieler, sichern,
       h('p', { class: 'grau' }, u.typ === 'ton' ? 'Im Teilen-Menü „In Dateien sichern“ wählen.' : 'Im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
       info,
-      h('p', { class: 'grau' }, 'Messwerte und „Auswerten lassen“ kommen mit den nächsten Blöcken.'),
+      h('p', { class: 'grau' }, 'Körpermessung und „Auswerten lassen“ kommen mit den nächsten Blöcken.'),
       h('button', { class: 'breit', onclick: () => geheZu('#/') }, 'Zum Start'),
       h('button', { class: 'breit leise', onclick: async () => {
         if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;

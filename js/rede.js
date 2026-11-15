@@ -1,22 +1,23 @@
 // Ablauf Stegreifrede: Einrichten → Begriff + Vorbereitung → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=6';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=6';
-import { ziehe } from './begriffe.js?v=6';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=6';
-import * as G from './geraet.js?v=6';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=7';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=7';
+import { ziehe } from './begriffe.js?v=7';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=7';
+import * as G from './geraet.js?v=7';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
 const UEBERZUG_MAX = 600;   // spätestens 10 Minuten nach dem Soll endet die Aufnahme von selbst
 
 export function redeAblauf(app, E, merke) {
-  let aktiv = true, takt = null, aufnahme = null, messer = null, strom = null, pose = null, meta = null;
+  let aktiv = true, takt = null, aufnahme = null, messer = null, strom = null, pose = null, meta = null, ton = null;
   const video = h('video', { class: 'vorschau', playsinline: true, autoplay: true });
   video.muted = true;
 
   function aufraeumen() {
     aktiv = false; clearInterval(takt);
     if (aufnahme) aufnahme.stopp();
+    if (ton) { ton.stopp(); ton = null; }
     if (messer) messer.stopp();
     G.kameraAus(); G.wachAus();
     document.body.classList.remove('buehne');
@@ -80,6 +81,7 @@ export function redeAblauf(app, E, merke) {
     const b = ziehe(E.fachAnteil);
     if (ganz) G.poseLaden().then((p) => { pose = p; }).catch(() => { handInfo.textContent = 'Handzeichen nicht verfügbar. Beenden durch Schweigen oder Antippen.'; });
     try { messer = G.pegelMesser(strom); } catch (e) { messer = null; }
+    G.pcmVorbereiten().catch(() => {});       // Mitschnitt der Tonspur schon jetzt laden
 
     const status = h('div', { class: 'status' }, 'Vorbereitung');
     const uhr = h('div', { class: 'uhr' });
@@ -117,6 +119,7 @@ export function redeAblauf(app, E, merke) {
       catch (e) { status.textContent = 'Die Aufnahme lässt sich nicht starten.'; clearInterval(takt); return; }
       G.signal(1, 660);
       t0 = performance.now();
+      G.pcmStarten(strom, meta.id).then((p) => { if (beendet) p.stopp(); else { ton = p; meta.tonVersatz = Math.round((p.beginn - t0) / 100) / 10; } }).catch(() => {});
       status.textContent = nurTon ? '● Tonaufnahme' : '● Aufnahme';
       status.classList.add('laeuft');
       passe(ganz ? 13 : 9);
@@ -132,6 +135,7 @@ export function redeAblauf(app, E, merke) {
       status.textContent = 'Speichere …'; fertigKnopf.hidden = true; abbruch.hidden = true; frageBox.hidden = true;
       const r = await aufnahme.stopp();
       aufnahme = null;
+      if (ton) { await ton.stopp(); ton = null; meta.tonspur = true; }
       Object.assign(meta, {
         ist: Math.round(Math.max(1, istZeit == null ? el : istZeit) * 10) / 10, dauerAufnahme: Math.round(el), status: 'fertig', beendetDurch: art,
         mime: r.mime, groesse: r.groesse, stuecke: r.stuecke, fehler: r.fehler ? String(r.fehler.message || r.fehler) : '',
@@ -145,6 +149,7 @@ export function redeAblauf(app, E, merke) {
       if (phase === 'rede' && !confirm('Übung abbrechen? Die Aufnahme wird gelöscht.')) return;
       beendet = true; clearInterval(takt);
       if (aufnahme) { await aufnahme.stopp(); aufnahme = null; }
+      if (ton) { await ton.stopp(); ton = null; }
       if (meta) { try { await uebungLoeschen(meta.id); } catch (e) {} }
       geheZu('#/');
     }

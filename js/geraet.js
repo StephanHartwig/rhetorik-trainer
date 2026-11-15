@@ -1,5 +1,5 @@
 // Gerätefunktionen: Kamera, Ton (Signal, Pegel), Bildschirm an, Aufnahme
-import { stueckSpeichern } from './db.js?v=6';
+import { stueckSpeichern, pcmSpeichern } from './db.js?v=7';
 
 // ---------- Kamera und Mikrofon ----------
 let stream;
@@ -121,6 +121,40 @@ export function aufnahmeStarten(s, id, nurTon) {
   return {
     stopp() { if (rec.state !== 'inactive') rec.stop(); return fertig; },
     get fehler() { return fehler; },
+  };
+}
+
+// ---------- Tonspur mitschneiden (für Messung und Transkript) ----------
+let wlModul;
+export function pcmVorbereiten() {
+  if (!ctx || !ctx.audioWorklet) return Promise.reject(new Error('kein AudioWorklet'));
+  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=7').catch((e) => { wlModul = null; throw e; }));
+}
+export async function pcmStarten(s, id) {
+  await pcmVorbereiten();
+  const quelle = ctx.createMediaStreamSource(s), knoten = new AudioWorkletNode(ctx, 'pcm16k'), stumm = ctx.createGain();
+  stumm.gain.value = 0;
+  quelle.connect(knoten); knoten.connect(stumm); stumm.connect(ctx.destination);
+  const beginn = performance.now();
+  let teile = [], n = 0, kette = Promise.resolve(), endeDa;
+  const fertig = new Promise((r) => { endeDa = r; });
+  const leeren = () => {
+    if (!teile.length) return;
+    const b = new Blob(teile); teile = []; const i = n++;
+    kette = kette.then(() => pcmSpeichern(id, i, b)).catch(() => {});
+  };
+  knoten.port.onmessage = (ev) => {
+    if (ev.data === 'ende') { endeDa(); return; }
+    teile.push(ev.data); if (teile.length >= 10) leeren();
+  };
+  return {
+    beginn,
+    async stopp() {
+      knoten.port.postMessage('stopp');
+      await Promise.race([fertig, new Promise((r) => setTimeout(r, 500))]);
+      try { quelle.disconnect(); knoten.disconnect(); stumm.disconnect(); } catch (e) {}
+      leeren(); await kette;
+    },
   };
 }
 

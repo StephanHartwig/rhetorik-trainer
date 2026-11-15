@@ -106,6 +106,7 @@
     <button id="bW1">Klein (ca. 40 MB)</button>
     <button id="bW2">Mittel (ca. 80 MB)</button>
   </div>
+  <button id="bW3" class="sec">Groß (ca. 250 MB, kann abstürzen)</button>
   <pre id="out5b"></pre>
   <div class="v" data-k="t5b" data-q="Whisper: Der Text stimmt ungefähr"></div>
 </section>
@@ -153,7 +154,7 @@ const $ = (id) => document.getElementById(id);
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32';
 const POSE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
 const FACE = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
-const VERSION = 'Probe 4';
+const VERSION = 'Probe 5';
 // Prüft beim Öffnen, ob online eine neuere Fassung liegt, und bietet dann einen Knopf an.
 fetch('index.html?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => {
   const m = t.match(/const VERSION = '([^']+)'/);
@@ -590,6 +591,7 @@ async function whisper(model, key) {
 }
 $('bW1').onclick = () => whisper('onnx-community/whisper-tiny', 'a5bKlein');
 $('bW2').onclick = () => whisper('onnx-community/whisper-base', 'a5bMittel');
+$('bW3').onclick = () => whisper('onnx-community/whisper-small', 'a5bGross');
 
 // ---------- Übergabe an Claude ----------
 const PAKET = [
