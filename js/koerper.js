@@ -1,9 +1,8 @@
 // Körpermessung am gespeicherten Video: Bild für Bild Körper und Gesicht erkennen, auswerten, Einzelbilder ablegen.
-import { poseLaden, gesichtLaden } from './geraet.js?v=9';
-import { aufnahmeDatei, uebungSpeichern, bildSpeichern, bilderLoeschen } from './db.js?v=9';
-import { koerperAuswerten, bildZeiten } from './koerper-rechnen.js?v=9';
+import { poseLaden, gesichtLaden } from './geraet.js?v=10';
+import { aufnahmeDatei, uebungSpeichern, bildSpeichern, bilderLoeschen } from './db.js?v=10';
+import { koerperAuswerten, bildZeiten } from './koerper-rechnen.js?v=10';
 
-const MAX_PROBEN = 600;
 const pause = () => new Promise((r) => setTimeout(r, 0));
 
 function springe(v, t) {
@@ -38,7 +37,9 @@ function gesichtWerte(f) {
   };
 }
 
-export async function koerperMessen(u, melde) {
+// opt.cpu: sparsame Betriebsart (kleinere Bilder, weniger Proben, ohne Grafikchip). opt.beiBild(i, n): Fortschritt.
+export async function koerperMessen(u, melde, opt = {}) {
+  const MAX_PROBEN = opt.cpu ? 240 : 600;
   if (u.typ !== 'video') return u;
   melde('Körper: lade das Video …');
   const datei = await aufnahmeDatei(u);
@@ -55,12 +56,12 @@ export async function koerperMessen(u, melde) {
     try { await v.play(); v.pause(); } catch (e) {}
     if (!v.videoWidth) throw new Error('Das Video lässt sich nicht öffnen.');
     melde('Körper: lade die Erkennung …');
-    const gesicht = await gesichtLaden();
-    const pose = ganz ? await poseLaden() : null;
+    const gesicht = await gesichtLaden(!!opt.cpu);
+    const pose = ganz ? await poseLaden(!!opt.cpu) : null;
 
     const dauer = Math.max(1, Math.min(isFinite(v.duration) && v.duration > 0 ? v.duration : (u.dauerAufnahme || u.ist), u.ist || 1e9));
     const schritt = Math.max(0.5, dauer / MAX_PROBEN), anzahl = Math.max(2, Math.floor(dauer / schritt));
-    const w = 480, hh = Math.round(480 * v.videoHeight / v.videoWidth);
+    const w = opt.cpu ? 320 : 480, hh = Math.round(w * v.videoHeight / v.videoWidth);
     const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
     const ctx = cv.getContext('2d', { willReadFrequently: false });
     const kopf = document.createElement('canvas'); kopf.width = 256; kopf.height = 256;
@@ -97,7 +98,7 @@ export async function koerperMessen(u, melde) {
         probe.gesicht = gesichtWerte(gesicht.detect(cv));
       }
       proben.push(probe);
-      if (i % 5 === 0) { melde('Körper: Bild ' + (i + 1) + ' von ' + anzahl); await pause(); }
+      if (i % 5 === 0) { melde('Körper: Bild ' + (i + 1) + ' von ' + anzahl); if (opt.beiBild) opt.beiBild(i + 1, anzahl); await pause(); }
     }
     if (proben.length < 2) throw new Error('Aus dem Video ließen sich keine Bilder lesen.');
 
@@ -117,7 +118,7 @@ export async function koerperMessen(u, melde) {
       await bildSpeichern(u.id, bilder.length, blob);
       bilder.push({ t: z.t, grund: z.grund });
     }
-    u.koerper = { ...werte, hinweise, fehlSpruenge, schritt: Math.round(schritt * 100) / 100, datum: new Date().toISOString() };
+    u.koerper = { ...werte, hinweise, fehlSpruenge, sparsam: !!opt.cpu, schritt: Math.round(schritt * 100) / 100, datum: new Date().toISOString() };
     u.bilder = bilder;
     await uebungSpeichern(u);
     return u;

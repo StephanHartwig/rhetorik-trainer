@@ -1,9 +1,9 @@
 // Ablauf Stegreifrede: Einrichten → Begriff + Vorbereitung → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=9';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=9';
-import { ziehe } from './begriffe.js?v=9';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=9';
-import * as G from './geraet.js?v=9';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=10';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=10';
+import { ziehe } from './begriffe.js?v=10';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=10';
+import * as G from './geraet.js?v=10';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
@@ -19,7 +19,7 @@ export function redeAblauf(app, E, merke) {
     if (aufnahme) aufnahme.stopp();
     if (ton) { ton.stopp(); ton = null; }
     if (messer) messer.stopp();
-    G.kameraAus(); G.wachAus();
+    G.kameraAus(); G.wachAus(); G.erkennungSchliessen();
     document.body.classList.remove('buehne');
   }
 

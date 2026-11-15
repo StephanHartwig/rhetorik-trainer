@@ -1,5 +1,5 @@
 // Gerätefunktionen: Kamera, Ton (Signal, Pegel), Bildschirm an, Aufnahme
-import { stueckSpeichern, pcmSpeichern } from './db.js?v=9';
+import { stueckSpeichern, pcmSpeichern } from './db.js?v=10';
 
 // ---------- Kamera und Mikrofon ----------
 let stream;
@@ -128,7 +128,7 @@ export function aufnahmeStarten(s, id, nurTon) {
 let wlModul;
 export function pcmVorbereiten() {
   if (!ctx || !ctx.audioWorklet) return Promise.reject(new Error('kein AudioWorklet'));
-  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=9').catch((e) => { wlModul = null; throw e; }));
+  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=10').catch((e) => { wlModul = null; throw e; }));
 }
 export async function pcmStarten(s, id) {
   await pcmVorbereiten();
@@ -161,26 +161,30 @@ export async function pcmStarten(s, id) {
 // ---------- Handzeichen (nur Ganzkörper): beide Hände über dem Kopf ----------
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32';
 const POSE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
-let poseP;
-export function poseLaden() {
-  return poseP || (poseP = (async () => {
-    const m = await import(MP + '/vision_bundle.mjs');
-    const fs = await m.FilesetResolver.forVisionTasks(MP + '/wasm');
-    const mk = (delegate) => m.PoseLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: POSE, delegate }, runningMode: 'IMAGE', numPoses: 1 });
-    try { return await mk('GPU'); } catch (e) { return await mk('CPU'); }
-  })().catch((e) => { poseP = null; throw e; }));
+let poseP, poseArt, gesichtP, gesichtArt;
+async function baue(Klasse, optionen, cpu) {
+  const m = await import(MP + '/vision_bundle.mjs');
+  const fs = await m.FilesetResolver.forVisionTasks(MP + '/wasm');
+  const mk = (delegate) => m[Klasse].createFromOptions(fs, { baseOptions: { modelAssetPath: optionen.modell, delegate }, runningMode: 'IMAGE', ...optionen.rest });
+  if (cpu) return mk('CPU');
+  try { return await mk('GPU'); } catch (e) { return await mk('CPU'); }
+}
+// cpu = true: sparsame Betriebsart ohne Grafikchip (langsamer, braucht weniger Speicher)
+export function poseLaden(cpu = false) {
+  if (poseP && poseArt !== cpu) poseSchliessen();
+  poseArt = cpu;
+  return poseP || (poseP = baue('PoseLandmarker', { modell: POSE, rest: { numPoses: 1 } }, cpu).catch((e) => { poseP = null; throw e; }));
 }
 const GESICHT = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
-let gesichtP;
-export function gesichtLaden() {
-  return gesichtP || (gesichtP = (async () => {
-    const m = await import(MP + '/vision_bundle.mjs');
-    const fs = await m.FilesetResolver.forVisionTasks(MP + '/wasm');
-    const mk = (delegate) => m.FaceLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: GESICHT, delegate }, runningMode: 'IMAGE', numFaces: 1,
-      outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true });
-    try { return await mk('GPU'); } catch (e) { return await mk('CPU'); }
-  })().catch((e) => { gesichtP = null; throw e; }));
+export function gesichtLaden(cpu = false) {
+  if (gesichtP && gesichtArt !== cpu) gesichtSchliessen();
+  gesichtArt = cpu;
+  return gesichtP || (gesichtP = baue('FaceLandmarker', { modell: GESICHT, rest: { numFaces: 1, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true } }, cpu).catch((e) => { gesichtP = null; throw e; }));
 }
+function poseSchliessen() { const p = poseP; poseP = null; if (p) p.then((x) => x.close()).catch(() => {}); }
+function gesichtSchliessen() { const p = gesichtP; gesichtP = null; if (p) p.then((x) => x.close()).catch(() => {}); }
+// Gibt den Speicher der Erkennung wieder frei.
+export function erkennungSchliessen() { poseSchliessen(); gesichtSchliessen(); }
 // Prüft ein Kamerabild. Ergebnis: true = beide Hände über dem Kopf, false = nicht, null = niemand erkannt.
 export function haendeOben(pose, video, leinwand) {
   if (!video.videoWidth) return null;
