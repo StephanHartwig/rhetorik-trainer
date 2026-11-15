@@ -1,8 +1,9 @@
 // Ergebnisseite, Teil „Auswertung“: Paket an die Claude-App teilen, Ergebniscode des Coachs einfügen.
-import { h, fuelle } from './ui.js?v=15';
-import { fmtZeit } from './store.js?v=15';
-import { paketText, codeLesen } from './auswertung.js?v=15';
-import { bilderLaden, uebungSpeichern } from './db.js?v=15';
+import { h, fuelle } from './ui.js?v=16';
+import { fmtZeit } from './store.js?v=16';
+import { paketText, codeLesen } from './auswertung.js?v=16';
+import { bilderLaden, uebungSpeichern } from './db.js?v=16';
+import { md } from './md.js?v=16';
 
 const PUNKT = { 1: 'erfüllt', 0.5: 'teilweise', 0: 'fehlt' };
 
@@ -70,7 +71,7 @@ export function coachTeil(u) {
       e ? h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Bewertung des Coachs', h('span', { class: 'wert' }, 'Note ' + e.note)),
         Object.keys(e.punkte).length ? h('table', { class: 'werte' }, Object.entries(e.punkte).map(([n, w]) => zeile(n, PUNKT[w] || String(w)))) : null,
         e.aufgabe ? h('div', { class: 'aufgabe' }, h('div', { class: 'grau' }, 'Aufgabe für morgen'), e.aufgabe) : null,
-        u.feedback ? h('details', {}, h('summary', {}, 'Ganzes Feedback anzeigen'), h('div', { class: 'feedback' }, u.feedback)) : null) : null,
+        u.feedback ? h('details', {}, h('summary', {}, 'Ganzes Feedback anzeigen'), h('div', { class: 'feedback md', lang: 'de' }, md(u.feedback))) : null) : null,
       h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Auswertung'),
         bereit ? null : h('div', { class: 'hinweis' }, 'Erst „Messwerte berechnen“, dann auswerten lassen.'),
         teilen,
