@@ -193,3 +193,7 @@ details.klapp.frei > summary { font-size: 19px; padding: 6px 2px; }
 
 .md { overflow-wrap: break-word; }
 .md th, .md td { overflow-wrap: normal; word-break: normal; hyphens: auto; -webkit-hyphens: auto; }
+
+/* Automatische Auswertung */
+.bereit { color: var(--ok); font-size: 15px; }
+input.text[type="password"] { font-family: ui-monospace, Menlo, monospace; font-size: 15px; }

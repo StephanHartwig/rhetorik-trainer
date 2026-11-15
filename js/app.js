@@ -1,12 +1,14 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=16';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=16';
-import { redeAblauf } from './rede.js?v=16';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=16';
-import { verlaufSeite, startInfo } from './verlauf.js?v=16';
-import { eigeneBegriffe } from './begriffe.js?v=16';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=17';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=17';
+import { redeAblauf } from './rede.js?v=17';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=17';
+import { verlaufSeite, startInfo } from './verlauf.js?v=17';
+import { autoSeite } from './auto-seite.js?v=17';
+import { autoStand } from './auto.js?v=17';
+import { eigeneBegriffe } from './begriffe.js?v=17';
 
-const VERSION = 16;
+const VERSION = 17;
 const app = document.getElementById('app');
 let E = laden();
 const merke = (k, v) => { E[k] = v; E = speichern(E); };
@@ -108,6 +110,7 @@ function einstellungen() {
     gruppe('Anteil Fachbegriffe', fach.anzeige, fach.zeile),
     gruppe('Transkript', null, transChips.el,
       h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht etwa 5 Minuten und lädt einmalig rund 250 MB.')),
+    h('button', { class: 'breit', onclick: () => geheZu('#/auto') }, 'Automatische Auswertung (' + (autoStand().bereit ? 'eingerichtet' : 'nicht eingerichtet') + ')'),
     h('button', { class: 'breit', onclick: () => geheZu('#/eigene') }, 'Eigene Begriffe (' + eigeneBegriffe().length + ')'),
     h('button', { class: 'breit', onclick: () => {
       if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { E = speichern({ ...STANDARD }); zeigen(); }
@@ -126,6 +129,7 @@ function zeigen() {
   if (pfad.startsWith('uebung/')) { aufraeumen = uebungSeite(app, pfad.slice(7)); return; }
   if (pfad === 'verlauf') { aufraeumen = verlaufSeite(app); return; }
   if (pfad === 'eigene') { aufraeumen = eigeneSeite(app); return; }
+  if (pfad === 'auto') { aufraeumen = autoSeite(app); return; }
   let seite;
   if (pfad === 'einstellungen') seite = einstellungen();
   else if (pfad.startsWith('bald/')) seite = bald(pfad.slice(5));
