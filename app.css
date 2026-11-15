@@ -67,13 +67,13 @@ a { color: var(--blau); }
   font-size: 28px; font-weight: 600; line-height: 1;
 }
 input[type="range"] { flex: 1; min-width: 0; height: 44px; accent-color: var(--blau); }
-.frei { display: flex; align-items: flex-end; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.frei label { font-size: 14px; color: var(--grau); display: flex; flex-direction: column; gap: 4px; }
-.frei input {
+div.frei { display: flex; align-items: flex-end; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+div.frei label { font-size: 14px; color: var(--grau); display: flex; flex-direction: column; gap: 4px; }
+div.frei input {
   width: 84px; height: 52px; border-radius: 14px; border: 1px solid var(--linie); background: var(--bg); color: var(--tx);
   font: inherit; font-size: 20px; text-align: center;
 }
-.frei button { background: var(--knopf); border: 0; border-radius: 14px; height: 52px; padding: 0 16px; font-weight: 600; }
+div.frei button { background: var(--knopf); border: 0; border-radius: 14px; height: 52px; padding: 0 16px; font-weight: 600; }
 .hinweis { font-size: 15px; color: var(--grau); margin-top: 10px; }
 .hinweis:empty { display: none; }
 .hinweis.fehler { color: var(--rot); }
@@ -224,7 +224,10 @@ details.klapp.gruppe > summary ~ * { margin-top: 8px; }
 /* Verlauf: Papierkorb je Übung und Sammellöschen */
 .eZeile { display: flex; align-items: stretch; gap: 8px; }
 .eZeile .eintrag { flex: 1; min-width: 0; }
-.muell { flex: none; width: 56px; margin: 6px 0; border-radius: 16px; background: var(--karte); border: 1px solid var(--linie); font-size: 22px; }
+.muell { flex: none; width: 44px; margin: 6px 0; padding: 0; border-radius: 14px; background: transparent; border: 0; font-size: 20px; }
+.eZeile { gap: 2px; }
+.eZeile .eintrag .e1, .eintrag.wahl .e1 { display: flex; justify-content: space-between; gap: 10px; hyphens: manual; -webkit-hyphens: manual; overflow-wrap: break-word; }
+.eZeile .eintrag .e2, .eintrag.wahl .e2 { font-size: 16px; margin-top: 4px; }
 .eintrag.wahl { display: flex; align-items: center; gap: 14px; }
 .eintrag.wahl .eInhalt { flex: 1; min-width: 0; }
 .eintrag.wahl .haken { flex: none; width: 30px; height: 30px; border-radius: 9px; border: 2px solid var(--grau); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; }

@@ -1,12 +1,13 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2004';
-import { fmtZeit } from './store.js?v=2004';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2004';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2004';
-import { entwirren } from './auto.js?v=2004';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2005';
+import { fmtZeit } from './store.js?v=2005';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2005';
+import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2005';
+import { entwirren } from './auto.js?v=2005';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
+const tag = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const kurz = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 
 // Aufklappbarer Bereich, der sich merkt, ob er offen war
@@ -108,8 +109,8 @@ export function verlaufSeite(app) {
           const an = auswahl && auswahl.has(u.id);
           const inhalt = [
             h('div', { class: 'e1', lang: 'de' }, h('span', {}, u.aufgabe), u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null),
-            h('div', { class: 'e2' }, [datumText(u.datum), MODUS[u.modus] || u.modus].join(' · ')),
-            h('div', { class: 'e2' }, u.status === 'fertig' ? 'Soll ' + fmtZeit(u.soll) + ' · Ist ' + fmtZeit(u.ist) + ' · ' + mb(u.groesse || 0) + (u.ergebnis ? '' : u.messung ? ' · noch nicht ausgewertet' : ' · noch nicht gemessen') : 'nicht sauber beendet'),
+            // Nur das Nötigste: Datum, Dauer, Art. Alles Weitere steht in der geöffneten Übung.
+            h('div', { class: 'e2' }, [tag(u.datum), u.status === 'fertig' ? fmtZeit(u.ist) : 'nicht sauber beendet', MODUS[u.modus] || u.modus].join(' · ')),
           ];
           if (auswahl) return h('button', { class: 'eintrag wahl' + (an ? ' an' : ''), 'aria-pressed': String(!!an), onclick: () => { if (an) auswahl.delete(u.id); else auswahl.add(u.id); zeichne(); } },
             h('span', { class: 'haken' }, an ? '✓' : ''), h('div', { class: 'eInhalt' }, inhalt));

@@ -1,10 +1,10 @@
 // Tagesprogramm „Heute üben“: jeden Tag zwei Aufgaben (Stegreifrede und Schlagfertigkeit) in zufälliger Reihenfolge.
 // Was aufgedeckt wurde, steht für den Tag fest. Ein neuer Tag beginnt um 4:00 Uhr.
-import { h, fuelle, kopf, geheZu } from './ui.js?v=2004';
-import { tagSchluessel } from './store.js?v=2004';
-import { ziehe } from './begriffe.js?v=2004';
-import { zieheImpuls } from './impulse.js?v=2004';
-import { redeAblauf } from './rede.js?v=2004';
+import { h, fuelle, kopf, geheZu } from './ui.js?v=2005';
+import { tagSchluessel } from './store.js?v=2005';
+import { ziehe } from './begriffe.js?v=2005';
+import { zieheImpuls } from './impulse.js?v=2005';
+import { redeAblauf } from './rede.js?v=2005';
 
 const K = 'rt.heute';
 const NAME = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit' };
