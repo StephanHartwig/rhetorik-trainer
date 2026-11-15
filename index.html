@@ -50,6 +50,7 @@
 <h1>Rhetorik-Trainer · Probe</h1>
 <p class="mut">Von oben nach unten durchgehen. Unter jedem Test antippen, wie es lief. Ganz unten „Bericht kopieren“ und den Text an Claude Code schicken.</p>
 <p id="wake" class="mut" style="font-weight:600"></p>
+<label class="chk mut"><input type="checkbox" id="chkWach"> Bildschirm geht trotzdem aus? Dann hier einschalten.</label>
 <p class="mut">Die App muss offen und sichtbar bleiben. Beim Wechsel in eine andere App oder bei gesperrtem Bildschirm hält das iPhone sie an.</p>
 
 <section>
@@ -151,7 +152,7 @@ const $ = (id) => document.getElementById(id);
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32';
 const POSE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
 const FACE = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
-const VERSION = 'Probe 2';
+const VERSION = 'Probe 3';
 
 // ---------- Ergebnisse merken (überlebt Neuladen und Abstürze) ----------
 let R = {};
@@ -177,7 +178,7 @@ document.querySelectorAll('.v').forEach((el) => {
 });
 
 // ---------- Gerät ----------
-const info = { version: VERSION };
+const info = { version: VERSION, bildschirmAn: null };
 async function deviceInfo() {
   const MR = typeof MediaRecorder !== 'undefined';
   Object.assign(info, {
@@ -268,6 +269,7 @@ $('bCam').onclick = async () => {
 
 // ---------- Bildschirm an ----------
 let wlObj; const wl = { angefragt: 0, erhalten: 0, verloren: 0, fehler: '' };
+info.bildschirmAn = wl;
 async function wakeOn() {
   if (!('wakeLock' in navigator)) { wl.fehler = 'nicht vorhanden'; return; }
   try {
@@ -277,14 +279,50 @@ async function wakeOn() {
     wlObj.addEventListener('release', () => { wl.verloren++; });
   } catch (e) { wl.fehler = errText(e); }
 }
-// Der Bildschirm bleibt an, solange die Seite sichtbar ist (nicht nur während der Aufnahme).
-async function keepAwake() {
-  if (document.visibilityState !== 'visible') return;
-  if (!wlObj || wlObj.released) await wakeOn();
-  const an = !!(wlObj && !wlObj.released);
-  $('wake').textContent = an ? 'Bildschirm bleibt an ✓' : 'Bildschirm kann ausgehen: bitte ab und zu antippen' + (wl.fehler ? ' (' + wl.fehler + ')' : '');
-  $('wake').style.color = an ? 'var(--ok)' : 'var(--mid)';
+// Ersatzweg: ein winziges stummes Video in Dauerschleife hält den Bildschirm ebenfalls an.
+let wachVid;
+const iosAlt = (() => { const m = navigator.userAgent.match(/OS (\d+)_(\d+)/); return m ? (+m[1] < 18 || (+m[1] === 18 && +m[2] < 4)) : false; })();
+const nativOk = () => !!(wlObj && !wlObj.released);
+const videoOk = () => !!(wachVid && !wachVid.paused);
+const wachNoetig = () => $('chkWach').checked || iosAlt || !nativOk();
+function videoAwake() {
+  if (!wachVid) {
+    wachVid = document.createElement('video');
+    wachVid.setAttribute('playsinline', ''); wachVid.setAttribute('title', 'Bildschirm an');
+    wachVid.preload = 'auto'; wachVid.src = 'wach.mp4';
+    wachVid.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;margin:0';
+    wachVid.addEventListener('loadedmetadata', () => {
+      if (wachVid.duration <= 1) wachVid.loop = true;
+      else wachVid.addEventListener('timeupdate', () => { if (wachVid.currentTime > 0.5) wachVid.currentTime = Math.random(); });
+    });
+    document.body.appendChild(wachVid);
+  }
+  if (wachVid.paused) {
+    const pr = wachVid.play();
+    if (pr) pr.then(() => { wl.ersatzweg = 'läuft'; wakeStatus(); }).catch((e) => { wl.ersatzweg = errText(e); wakeStatus(); });
+  }
 }
+function wakeStatus() {
+  const n = nativOk(), v = videoOk(), el = $('wake');
+  if (n || v) { el.textContent = 'Bildschirm bleibt an ✓' + (v ? (n ? ' (doppelt gesichert)' : ' (Ersatzweg)') : ''); el.style.color = 'var(--ok)'; }
+  else { el.textContent = 'Tippe einmal irgendwo auf die Seite, dann bleibt der Bildschirm an.'; el.style.color = 'var(--mid)'; }
+}
+// Der Bildschirm bleibt an, solange die Seite sichtbar ist (nicht nur während der Aufnahme).
+async function keepAwake(ev) {
+  if (document.visibilityState !== 'visible') return;
+  const tap = ev && ev.type === 'pointerdown';
+  // Das Video muss direkt im Antippen starten, deshalb vor jedem Warten.
+  if (wachNoetig() && (tap || wachVid)) videoAwake();
+  if (!nativOk()) await wakeOn();
+  if (!wachNoetig() && videoOk()) wachVid.pause();
+  wakeStatus();
+}
+try { $('chkWach').checked = localStorage.getItem('rt0wach') === '1'; } catch (e) {}
+$('chkWach').onchange = () => {
+  try { localStorage.setItem('rt0wach', $('chkWach').checked ? '1' : '0'); } catch (e) {}
+  if ($('chkWach').checked) videoAwake(); else if (!wachNoetig() && videoOk()) wachVid.pause();
+  wakeStatus();
+};
 document.addEventListener('visibilitychange', keepAwake);
 document.addEventListener('pointerdown', keepAwake);
 setInterval(keepAwake, 15000);
