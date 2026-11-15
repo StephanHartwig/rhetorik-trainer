@@ -8,13 +8,13 @@ export function h(tag, attrs, ...kinder) {
     else if (v === true) el.setAttribute(k, '');
     else if (v !== false && v != null) el.setAttribute(k, v);
   }
-  for (const kind of kinder.flat(3)) if (kind != null && kind !== false) el.append(kind);
+  for (const kind of kinder.flat(Infinity)) if (kind != null && kind !== false) el.append(kind);
   return el;
 }
 
 // Ersetzt den Inhalt eines Elements; leere Einträge und verschachtelte Listen sind erlaubt.
 export function fuelle(el, ...kinder) {
-  el.replaceChildren(...kinder.flat(3).filter((k) => k != null && k !== false));
+  el.replaceChildren(...kinder.flat(Infinity).filter((k) => k != null && k !== false));
 }
 
 export const geheZu = (ziel) => { location.hash = ziel; };
@@ -52,8 +52,9 @@ export function regler({ min, max, schritt, knopf, wert, text, beiWechsel }) {
 // Aufklappbarer Kasten: zu ist er eine Zeile mit Titel und Kurzwert. Merkt sich je Name, ob er offen war.
 const K_KLAPP = 'rt.klapp.offen';
 function offeneKlappen() { try { return JSON.parse(localStorage.getItem(K_KLAPP)) || []; } catch (e) { return []; } }
-export function klappe(name, titel, wert, ...inhalt) {
-  const d = h('details', { class: 'klapp gruppe' }, h('summary', {}, h('span', {}, titel), wert ? h('span', { class: 'wert' }, wert) : null), inhalt);
+// klasse: 'gruppe' (Kasten) oder 'frei' (ohne Rahmen). kopfInhalt: was in der Kopfzeile steht.
+export function klapp(name, klasse, kopfInhalt, ...inhalt) {
+  const d = h('details', { class: 'klapp ' + klasse }, h('summary', {}, kopfInhalt), inhalt);
   if (offeneKlappen().includes(name)) d.open = true;
   d.addEventListener('toggle', () => {
     const l = offeneKlappen().filter((x) => x !== name);
@@ -62,6 +63,7 @@ export function klappe(name, titel, wert, ...inhalt) {
   });
   return d;
 }
+export const klappe = (name, titel, wert, ...inhalt) => klapp(name, 'gruppe', [h('span', {}, titel), wert ? h('span', { class: 'wert' }, wert) : null], ...inhalt);
 
 export function gruppe(titel, anzeige, ...inhalt) {
   return h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, h('span', {}, titel), anzeige), inhalt);

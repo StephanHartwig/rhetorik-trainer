@@ -1,5 +1,5 @@
 // Auswertungspaket für den Coach bauen, Ergebniscode (RT1|…) lesen, Serie der Übungstage zählen.
-import { fmtZeit, tagSchluessel } from './store.js?v=2100';
+import { fmtZeit, tagSchluessel } from './store.js?v=2101';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -100,10 +100,15 @@ export function noteZahl(note) {
 // ---------- Tage in Folge und Aufgabe für morgen ----------
 export function serie(uebungen, heute = new Date()) {
   const tage = new Set(uebungen.filter((u) => u.status === 'fertig').map((u) => u.tag || tagSchluessel(new Date(u.datum))));
-  let d = new Date(heute.getTime()), n = 0;
-  if (!tage.has(tagSchluessel(d))) d = new Date(d.getTime() - 86400000);     // heute noch offen: die Serie läuft bis gestern
-  while (tage.has(tagSchluessel(d))) { n++; d = new Date(d.getTime() - 86400000); }
-  return { tage: n, heute: tage.has(tagSchluessel(heute)) };
+  // Über Kalendertage zählen (mittags, damit die Zeitumstellung keinen Tag verschluckt oder verdoppelt)
+  const schluessel = (x) => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  const [j, m, t] = tagSchluessel(heute).split('-').map(Number);
+  const d = new Date(j, m - 1, t, 12);
+  const heuteDa = tage.has(schluessel(d));
+  let n = 0;
+  if (!heuteDa) d.setDate(d.getDate() - 1);          // heute noch offen: die Serie läuft bis gestern
+  while (tage.has(schluessel(d))) { n++; d.setDate(d.getDate() - 1); }
+  return { tage: n, heute: heuteDa };
 }
 export function aufgabeFuerMorgen(uebungen) {
   const mit = uebungen.filter((u) => u.ergebnis && u.ergebnis.aufgabe).sort((a, b) => (a.ergebnis.datum < b.ergebnis.datum ? 1 : -1));

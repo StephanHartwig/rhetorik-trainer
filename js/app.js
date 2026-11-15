@@ -1,17 +1,18 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2100';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=2100';
-import { redeAblauf } from './rede.js?v=2100';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=2100';
-import { verlaufSeite, startInfo } from './verlauf.js?v=2100';
-import { autoSeite } from './auto-seite.js?v=2100';
-import { autoStand } from './auto.js?v=2100';
-import { eigeneBegriffe } from './begriffe.js?v=2100';
-import { eigene } from './impulse.js?v=2100';
-import { heuteSeite, heuteStand } from './heute.js?v=2100';
-import { stimmeSeite } from './stimme.js?v=2100';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2101';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=2101';
+import { redeAblauf } from './rede.js?v=2101';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=2101';
+import { verlaufSeite, startInfo } from './verlauf.js?v=2101';
+import { autoSeite } from './auto-seite.js?v=2101';
+import { lauf, laufend } from './messlauf.js?v=2101';
+import { autoStand } from './auto.js?v=2101';
+import { eigeneBegriffe } from './begriffe.js?v=2101';
+import { eigene } from './impulse.js?v=2101';
+import { heuteSeite, heuteStand } from './heute.js?v=2101';
+import { stimmeSeite } from './stimme.js?v=2101';
 
-const VERSION = 2100;
+const VERSION = 2101;
 // Ab 20.1 steckt die Unterstufe in der Zahl: 2001 wird als „20.1“ angezeigt.
 const fassungText = (n) => (n >= 1000 ? Math.floor(n / 100) + '.' + (n % 100) : String(n));
 const app = document.getElementById('app');
@@ -48,16 +49,6 @@ function start() {
       h('button', { class: 'kachel', onclick: () => geheZu('#/stimme') }, 'Stimme aufwärmen')),
     h('button', { class: 'breit', onclick: () => geheZu('#/verlauf') }, 'Verlauf'),
     h('div', { class: 'fuss warn' }, 'Vor dem Üben: Stromsparmodus aus (Batterie-Symbol nicht gelb).'),
-  ];
-}
-
-// ---------- ehrlicher Platzhalter für noch nicht gebaute Teile ----------
-const BALD = {};
-function bald(was) {
-  const [titel, text] = BALD[was] || ['Unbekannt', ''];
-  return [
-    kopf(titel),
-    h('div', { class: 'mitte' }, h('div', { class: 'dick' }, 'Noch nicht gebaut'), h('div', { class: 'grau' }, text)),
   ];
 }
 
@@ -119,13 +110,20 @@ function einstellungen() {
     h('button', { class: 'breit', onclick: () => {
       if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { E = speichern({ ...STANDARD }); zeigen(); }
     } }, 'Auf Standard zurücksetzen'),
-    h('div', { class: 'fuss grau' }, 'Fassung ' + fassungText(VERSION) + ' · ', h('a', { href: 'probe.html' }, 'Technik-Probe öffnen')),
+    h('div', { class: 'fuss grau' }, 'Fassung ' + fassungText(VERSION)),
   ];
 }
 
 // ---------- Seitenwechsel ----------
 let aufraeumen = null;
 function zeigen() {
+  // Während einer Messung bleibt die Ergebnisseite stehen. Verlassen geht nur nach Rückfrage und bricht die Messung sauber ab.
+  if (laufend.id) {
+    const zuhause = '#/uebung/' + laufend.id;
+    if (location.hash === zuhause) return;
+    if (!confirm('Die Messung läuft noch. Abbrechen und die Seite verlassen?')) { location.hash = zuhause; return; }
+    lauf.weg(); location.reload(); return;
+  }
   if (aufraeumen) { try { aufraeumen(); } catch (e) {} aufraeumen = null; }
   const pfad = location.hash.replace(/^#\/?/, '');
   window.scrollTo(0, 0);
@@ -140,7 +138,6 @@ function zeigen() {
   if (pfad === 'auto') { aufraeumen = autoSeite(app); return; }
   let seite;
   if (pfad === 'einstellungen') seite = einstellungen();
-  else if (pfad.startsWith('bald/')) seite = bald(pfad.slice(5));
   else seite = start();
   fuelle(app, seite);
 }

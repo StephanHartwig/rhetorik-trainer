@@ -1,7 +1,7 @@
 // Export für Klara (eine Übung als Markdown-Datei) und Sicherung des Verlaufs (alles außer den Aufnahmen als Datei).
-import { paketText } from './auswertung.js?v=2100';
-import { alleUebungen, uebungLaden, uebungSpeichern } from './db.js?v=2100';
-import { entwirren } from './auto.js?v=2100';
+import { paketText } from './auswertung.js?v=2101';
+import { alleUebungen, uebungLaden, uebungSpeichern } from './db.js?v=2101';
+import { entwirren } from './auto.js?v=2101';
 
 // Datei über das Teilen-Menü abgeben (AirDrop, Dateien). Geht das nicht, als Download.
 // Muss direkt im Antippen laufen, die Datei also vorher fertig sein.
@@ -65,7 +65,15 @@ export async function sicherungEinlesen(daten, mitEinstellungen) {
     if (!u || typeof u.id !== 'string' || !u.datum || !u.aufgabe) continue;
     if (await uebungLaden(u.id)) { schon++; continue; }
     // Aufnahme und Einzelbilder stecken nicht in der Sicherung
-    await uebungSpeichern({ ...u, groesse: 0, stuecke: 0, bilder: [], tonspur: false, ohneAufnahme: true });
+    const ok = (o) => o && typeof o === 'object' && !Array.isArray(o);
+    const sauber = { ...u, soll: Number(u.soll) || 0, ist: Number(u.ist) || 0, status: 'fertig' };
+    if (!sauber.soll) continue;
+    if (!(ok(u.messung) && ok(u.messung.stimme) && ok(u.messung.sprache) && ok(u.messung.sprache.fuellEinzeln))) delete sauber.messung;
+    if (!Array.isArray(u.transkript)) delete sauber.transkript;
+    if (!(ok(u.koerper))) delete sauber.koerper;
+    if (!(ok(u.ergebnis) && typeof u.ergebnis.note === 'string' && ok(u.ergebnis.punkte))) delete sauber.ergebnis;
+    if (typeof u.feedback !== 'string') delete sauber.feedback;
+    await uebungSpeichern({ ...sauber, groesse: 0, stuecke: 0, bilder: [], tonspur: false, ohneAufnahme: true });
     neu++;
   }
   const sp = daten.speicher || {};
@@ -78,6 +86,8 @@ export async function sicherungEinlesen(daten, mitEinstellungen) {
       localStorage.setItem(k, JSON.stringify(alt));
     } catch (e) {}
   }
-  if (mitEinstellungen) for (const k of MIT) if (!LISTEN.includes(k) && typeof sp[k] === 'string') { try { localStorage.setItem(k, sp[k]); } catch (e) {} }
+  if (mitEinstellungen) for (const k of MIT) if (!LISTEN.includes(k) && typeof sp[k] === 'string') {
+    try { if (k.startsWith('rt.api.') || JSON.parse(sp[k])) localStorage.setItem(k, sp[k]); } catch (e) {}   // nur gültige Einträge
+  }
   return { neu, schon };
 }

@@ -1,11 +1,11 @@
 // Ergebnisseite, Teil „Auswertung“: automatisch über die Anthropic-Schnittstelle oder von Hand über die Claude-App.
-import { h, fuelle, geheZu, klappe } from './ui.js?v=2100';
-import { fmtZeit } from './store.js?v=2100';
-import { paketText, codeLesen } from './auswertung.js?v=2100';
-import { bilderLaden, uebungSpeichern } from './db.js?v=2100';
-import { md } from './md.js?v=2100';
-import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2100';
-import { wachAn, wachAus } from './geraet.js?v=2100';
+import { h, fuelle, geheZu, klappe } from './ui.js?v=2101';
+import { fmtZeit } from './store.js?v=2101';
+import { paketText, codeLesen } from './auswertung.js?v=2101';
+import { bilderLaden, uebungSpeichern } from './db.js?v=2101';
+import { md } from './md.js?v=2101';
+import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2101';
+import { wachAn, wachAus } from './geraet.js?v=2101';
 
 const PUNKT = { 1: 'erfüllt', 0.5: 'teilweise', 0: 'fehlt' };
 const dollar = (x) => (x < 0.01 ? 'unter 0,01' : x.toFixed(2).replace('.', ',')) + ' US-Dollar';

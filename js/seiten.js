@@ -1,18 +1,18 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2100';
-import { fmtZeit, laden } from './store.js?v=2100';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2100';
-import { koerperMessen } from './koerper.js?v=2100';
-import { coachTeil } from './coach.js?v=2100';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2100';
-import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2100';
-import * as I from './impulse.js?v=2100';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2100';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2100';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2100';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2101';
+import { fmtZeit, laden } from './store.js?v=2101';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2101';
+import { koerperMessen } from './koerper.js?v=2101';
+import { coachTeil } from './coach.js?v=2101';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2101';
+import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2101';
+import * as I from './impulse.js?v=2101';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2101';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2101';
+import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2101';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
-const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
+const ENDE = { speicherfehler: 'Fehler beim Speichern', abbruch: 'Aufnahme wurde unterbrochen', tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
 
 export function abweichung(u) {
   const d = Math.round(u.ist - u.soll), p = Math.round((u.ist - u.soll) / u.soll * 100);
@@ -72,7 +72,8 @@ function messTeil(u, ruhe, nachMessung) {
   const rest = lauf.lies();
   const weiter = !!(rest && rest.phase === 'weiter');
   if (weiter) lauf.weg();
-  const absturz = weiter ? null : absturzPruefen();
+  const fremd = !!(rest && rest.id !== u.id && rest.phase !== 'koerper' && Date.now() - (rest.zeit || 0) < 864e5);     // gehört zu einer anderen Übung: dort auswerten
+  const absturz = weiter || fremd ? null : absturzPruefen();
   let fehlerText = '', autoStart = weiter && rest.id === u.id;
   // Stürzt die App beim Transkript ab, lädt das iPhone die Seite neu. Dann geht es hier von selbst weiter:
   // Beim genauen Modell gleich mit dem schnellen (ein zweiter Absturz in Folge bringt die Fehlerseite von iOS).
@@ -80,15 +81,17 @@ function messTeil(u, ruhe, nachMessung) {
   let tonVersuch = 1, tonErsatz = false, autoText = '';
   if (absturz && absturz.id === u.id && absturz.phase === 'ton' && absturz.alter < 240000 && absturz.versuch < 3) {
     tonVersuch = absturz.versuch + 1;
-    tonErsatz = absturz.modell === 'gross';
+    tonErsatz = absturz.modell === 'gross' || absturz.ersatz;
     autoStart = true;
-    autoText = tonErsatz ? 'Das genaue Transkript wurde unterbrochen, vermutlich war zu wenig Arbeitsspeicher frei. Die App macht von selbst mit dem schnellen Transkript weiter.'
+    autoText = tonErsatz && !absturz.ersatz ? 'Das genaue Transkript wurde unterbrochen, vermutlich war zu wenig Arbeitsspeicher frei. Die App macht von selbst mit dem schnellen Transkript weiter.'
       : 'Die App wurde beim Transkript unterbrochen und macht von selbst weiter (Versuch ' + tonVersuch + ' von 3).';
   }
   const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
   const zahl = (x, einheit = '') => (x == null ? 'nicht messbar' : String(x).replace('.', ',') + einheit);
   // neu = true: alles neu messen. Sonst nur, was noch fehlt.
   function starte(knopf, stand, neu) {
+    if (laufend.id) return;                 // es läuft schon eine Messung
+    laufend.id = u.id;
     knopf.disabled = true; stand.className = 'hinweis'; wachAn();
     // Ohne Antippen (nach dem Neuladen) hält das iPhone den Bildschirm nicht immer an: dann um einen Tipp bitten.
     setTimeout(() => {
@@ -118,21 +121,23 @@ function messTeil(u, ruhe, nachMessung) {
             lauf.setze({ id: u.id, phase: 'weiter' });
             melde(1)('Körper fertig. Die Seite lädt kurz neu, um Arbeitsspeicher frei zu machen …');
             await new Promise((r) => setTimeout(r, 700));
-            location.reload();
+            location.reload();             // laufend.id bleibt bis dahin gesetzt
             return;
           }
         }
         if (mitTon) {
-          const marke = { id: u.id, phase: 'ton', modell: wahl, versuch: tonVersuch };
+          const marke = { id: u.id, phase: 'ton', modell: wahl, ersatz: tonErsatz, versuch: tonVersuch };
           lauf.setze(marke);
           const sag = melde(2);
           if (weiter || tonVersuch > 1) { sag('Gebe Arbeitsspeicher frei …'); await luftHolen(1500); }
           await messen(u, (t) => { lauf.setze(marke); sag(t); }, tonErsatz ? 'mittel' : wahl, { ersatz: tonErsatz });
           lauf.weg(); autoText = ''; tonVersuch = 1; tonErsatz = false;
         }
+        laufend.id = null;
         if (ruhe) ruhe.nach();
         zeichne();
       } catch (e) {
+        laufend.id = null;
         lauf.weg(); if (ruhe) ruhe.nach();
         // Was schon gemessen ist, zeigen; die Fehlermeldung bleibt darüber stehen
         autoText = ''; fehlerText = 'Die Messung hat nicht geklappt: ' + e.message; zeichne();
@@ -145,6 +150,7 @@ function messTeil(u, ruhe, nachMessung) {
     const m = u.messung, stand = h('div', { class: 'hinweis' });
     const warnung = [autoText ? h('p', { class: 'warn' }, autoText) : absturz && absturz.id === u.id ? h('p', { class: 'warn' }, absturz.text) : null, fehlerText ? h('p', { class: 'hinweis fehler' }, fehlerText) : null];
     fehlerText = '';
+    if (!m && u.ohneAufnahme) { fuelle(box, warnung, u.koerper ? koerperTeil(u) : null); return; }
     if (!m) {
       const mo = MODELLE[laden().transkript] || MODELLE.mittel;
       const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * (mo.minJeMin + (u.typ === 'video' ? 0.35 : 0)) + 0.3));
@@ -159,10 +165,10 @@ function messTeil(u, ruhe, nachMessung) {
     const s = m.stimme, p = m.sprache;
     const unsicher = (wert) => (s.unsicher ? 'unsicher' : wert);
     const fuell = Object.entries(p.fuellEinzeln).sort((a, b) => b[1] - a[1]).map(([w, n]) => w + ' ' + n).join(', ');
-    const nochmal = h('button', { class: 'breit leise', onclick: () => starte(nochmal, stand, true) }, 'Messung wiederholen');
-    const nurKoerper = u.typ === 'video' && koerperModus() !== 'aus' && (!u.koerper || u.koerper.fehler)
+    const nochmal = u.ohneAufnahme ? null : h('button', { class: 'breit leise', onclick: () => starte(nochmal, stand, true) }, 'Messung wiederholen');
+    const nurKoerper = !u.ohneAufnahme && u.typ === 'video' && koerperModus() !== 'aus' && (!u.koerper || u.koerper.fehler)
       ? h('button', { class: 'breit blau', onclick: () => starte(nurKoerper, stand, false) }, 'Körper nachmessen') : null;
-    const nurTon = m.ersatz ? h('button', { class: 'breit', onclick: () => starte(nurTon, stand, 'ton') }, 'Transkript noch einmal genau versuchen') : null;
+    const nurTon = m.ersatz && !u.ohneAufnahme ? h('button', { class: 'breit', onclick: () => starte(nurTon, stand, 'ton') }, 'Transkript noch einmal genau versuchen') : null;
     fuelle(box, warnung,
       m.ersatz ? h('p', { class: 'warn' }, 'Für das genaue Transkript war zu wenig Arbeitsspeicher frei. Dieses Transkript ist mit „schnell“ erstellt. Tipp: App ganz schließen, neu öffnen und unten „Transkript noch einmal genau versuchen“ antippen.') : null,
       h('h2', {}, 'Messwerte'),
@@ -197,7 +203,7 @@ function messTeil(u, ruhe, nachMessung) {
         u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
         h('div', { class: 'hinweis' }, 'Automatisch erstellt' + (m.modell ? ' (Transkript: ' + m.modell.replace('onnx-community/whisper-base', 'schnell') + ')' : '') + '. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
       nurKoerper, nurTon, nochmal, stand);
-    if (autoStart) { autoStart = false; starte(nochmal, stand, 'ton'); }
+    if (autoStart) { autoStart = false; if (nochmal) starte(nochmal, stand, 'ton'); }
   }
   zeichne();
   return box;
@@ -229,7 +235,22 @@ export function uebungSeite(app, id) {
       coach = coachTeil(u); coach.classList.add('coachBox');
       bereich.append(mess, coach); ordne();
     }
+    // Nicht sauber beendete Aufnahme: Was gespeichert ist, lässt sich trotzdem als Übung abschließen und messen.
+    const rettenInfo = h('div', { class: 'hinweis' });
+    const rettenKnopf = h('button', { class: 'breit blau', onclick: async () => {
+      rettenKnopf.disabled = true;
+      try {
+        const [teile, ton] = await Promise.all([stueckeLaden(u.id), pcmLaden(u.id)]);
+        if (!teile.length && !ton) { rettenInfo.textContent = 'Zu dieser Übung ist nichts gespeichert. Du kannst sie nur löschen.'; return; }
+        const sek = ton && ton.length > 8000 ? ton.length / 16000 : teile.length * 5;
+        Object.assign(u, { status: 'fertig', beendetDurch: 'abbruch', ist: Math.max(1, Math.round(sek * 10) / 10), dauerAufnahme: Math.round(sek),
+          groesse: teile.reduce((a, b) => a + (b.size || 0), 0), stuecke: teile.length, mime: (teile[0] && teile[0].type) || u.mime || '', tonspur: !!ton });
+        await uebungSpeichern(u);
+        location.reload();
+      } catch (e) { rettenInfo.textContent = 'Das hat nicht geklappt: ' + e.message; rettenKnopf.disabled = false; }
+    } }, 'Gespeicherten Teil retten');
     const loeschen = async () => {
+      if (laufend.id === u.id) { alert('Die Messung läuft noch. Bitte warte, bis sie fertig ist.'); return; }
       if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;
       await uebungLoeschen(u.id); geheZu('#/verlauf');
     };
@@ -246,9 +267,9 @@ export function uebungSeite(app, id) {
       kopf('Ergebnis', { rechts: h('button', { class: 'rad', 'aria-label': 'Übung löschen', onclick: loeschen }, '🗑') }),
       h('div', { class: 'begriffTitel', lang: 'de' }, u.aufgabe),
       h('p', { class: 'grau' }, [(MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''), u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', u.aufbau ? 'Aufbau ' + u.aufbau : null, datumText(u.datum)].filter(Boolean).join(' · ')),
-      u.status !== 'fertig' ? h('p', { class: 'warn' }, 'Diese Aufnahme wurde nicht sauber beendet. Die Zeiten fehlen deshalb.') : null,
+      u.status !== 'fertig' ? [h('p', { class: 'warn' }, 'Diese Aufnahme wurde nicht sauber beendet, zum Beispiel weil die App geschlossen wurde oder der Bildschirm ausging.'), rettenKnopf, rettenInfo] : null,
       u.ohneAufnahme ? h('p', { class: 'grau' }, 'Diese Übung stammt aus einer Sicherung. Video und Einzelbilder sind nicht dabei, neu messen geht deshalb nicht.') : null,
-      u.fehler ? h('p', { class: 'hinweis fehler' }, 'Beim Speichern der Aufnahme gab es einen Fehler: ' + u.fehler) : null,
+      u.fehler ? h('p', { class: 'hinweis fehler' }, 'Beim Speichern der Aufnahme gab es einen Fehler' + (u.beendetDurch === 'speicherfehler' ? ', deshalb wurde sie sofort beendet. Vermutlich ist der Speicher voll: Bitte im Verlauf alte Aufnahmen löschen.' : '.') + ' (' + u.fehler + ')') : null,
       bereich,
       u.status === 'fertig' ? [klaraKnopf, klaraInfo] : null,
       klappe('zeit', 'Zeit', u.status === 'fertig' ? fmtZeit(u.ist) + ' von ' + fmtZeit(u.soll) : '',

@@ -7,6 +7,9 @@ export const lauf = {
   setze(o) { try { localStorage.setItem(K_LAUF, JSON.stringify({ ...o, zeit: Date.now() })); } catch (e) {} },
   weg() { try { localStorage.removeItem(K_LAUF); } catch (e) {} },
 };
+// Welche Übung gerade gemessen wird (null = keine). Solange das gesetzt ist, bleibt die Ergebnisseite stehen:
+// kein zweiter Start, kein Neuzeichnen, kein Verlassen ohne Rückfrage.
+export const laufend = { id: null };
 // 'gpu' = normal, 'cpu' = sparsam, 'aus' = Körpermessung abgeschaltet
 export function koerperModus() { const m = localStorage.getItem(K_MODUS); return m === 'cpu' || m === 'aus' ? m : 'gpu'; }
 export function setzeKoerperModus(m) { try { localStorage.setItem(K_MODUS, m); } catch (e) {} }
@@ -26,6 +29,6 @@ export function absturzPruefen() {
     setzeKoerperModus('aus');
     return { id: r.id, text: 'Die Körpermessung wurde auch in der sparsamen Betriebsart unterbrochen' + wo + '. Sie ist jetzt ausgeschaltet. Ton und Transkript werden weiter gemessen. Bitte noch einmal antippen.' };
   }
-  return { id: r.id, phase: 'ton', versuch: r.versuch || 1, modell: r.modell, alter: Date.now() - (r.zeit || 0),
+  return { id: r.id, phase: 'ton', versuch: r.versuch || 1, modell: r.modell, ersatz: !!r.ersatz, alter: Date.now() - (r.zeit || 0),
     text: 'Der letzte Versuch wurde während des Transkripts unterbrochen' + (r.modell === 'gross' ? '. Wenn das wieder passiert, stelle in den Einstellungen das Transkript auf „schnell“.' : '.') + ' Bitte noch einmal antippen.' };
 }

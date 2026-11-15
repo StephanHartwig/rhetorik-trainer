@@ -1,6 +1,6 @@
 // Begriffe ziehen: zufällig, ohne Wiederholung, bis ein Vorrat durch ist.
 // Die eingebaute Liste wird nirgends angezeigt. Nur eigene Begriffe sind einsehbar.
-import { BEGRIFFE } from './begriffe-daten.js?v=2100';
+import { BEGRIFFE } from './begriffe-daten.js?v=2101';
 
 const K_VERBRAUCHT = 'rt.begriffe.verbraucht';
 const K_EIGENE = 'rt.begriffe.eigene';
@@ -44,7 +44,7 @@ export function ziehe(fachAnteil) {
     for (const [name, gewicht] of rest) { if (z < gewicht) { kat = name; break; } z -= gewicht; }
   }
   const alle = kat === 'eigen' ? eigene : v[kat];
-  let weg = (verbraucht[kat] || []).filter((t) => alle.includes(t));
+  let weg = (Array.isArray(verbraucht[kat]) ? verbraucht[kat] : []).filter((t) => alle.includes(t));
   if (weg.length >= alle.length) weg = [];           // Vorrat durch: von vorn
   const frei = alle.filter((t) => !weg.includes(t));
   const text = frei[Math.floor(Math.random() * frei.length)];

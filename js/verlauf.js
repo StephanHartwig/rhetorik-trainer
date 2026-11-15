@@ -1,29 +1,15 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2100';
-import { fmtZeit } from './store.js?v=2100';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2100';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2100';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2100';
-import { entwirren } from './auto.js?v=2100';
+import { h, fuelle, kopf, geheZu, datumText, mb, klapp } from './ui.js?v=2101';
+import { fmtZeit } from './store.js?v=2101';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2101';
+import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2101';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2101';
+import { entwirren } from './auto.js?v=2101';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
 const tag = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const kurz = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-
-// Aufklappbarer Bereich, der sich merkt, ob er offen war
-const K_OFFEN = 'rt.verlauf.offen';
-function offene() { try { return JSON.parse(localStorage.getItem(K_OFFEN)) || []; } catch (e) { return []; } }
-function klapp(name, klasse, kopfInhalt, ...inhalt) {
-  const d = h('details', { class: 'klapp ' + klasse }, h('summary', {}, kopfInhalt), inhalt);
-  if (offene().includes(name)) d.open = true;
-  d.addEventListener('toggle', () => {
-    const l = offene().filter((x) => x !== name);
-    if (d.open) l.push(name);
-    try { localStorage.setItem(K_OFFEN, JSON.stringify(l)); } catch (e) {}
-  });
-  return d;
-}
 
 // Eine Kurve je Messgröße: eine Linie, eine Achse. Antippen eines Punkts zeigt Wert und Datum.
 function kurve(titel, punkte, opt = {}) {
@@ -81,7 +67,7 @@ function sicherungTeil(anzahl, neuLaden) {
       location.reload();
     } catch (e) { sag(e.message, true); }
   });
-  return h('details', { class: 'klapp gruppe' }, h('summary', {}, h('span', {}, 'Sicherung')),
+  return klapp('Sicherung', 'gruppe', h('span', {}, 'Sicherung'),
     h('p', { class: 'grau' }, 'Die Sicherung enthält alle Übungen mit Messwerten, Transkript, Note und Feedback, dazu Einstellungen und eigene Listen. Nicht enthalten: Videos, Einzelbilder und der Schlüssel der automatischen Auswertung.'),
     h('button', { class: 'breit', disabled: !anzahl, onclick: () => {
       if (!bereit) { sag('Die Sicherung wird noch vorbereitet. Bitte gleich noch einmal antippen.'); return; }
@@ -159,7 +145,7 @@ export function verlaufSeite(app) {
       return [leiste, zeilen];
     }
   }
-  lade();
+  lade().catch((e) => { if (aktiv) fuelle(app, kopf('Verlauf'), h('p', { class: 'hinweis fehler' }, 'Der Verlauf lässt sich nicht anzeigen: ' + e.message), sicherungTeil(0)); });
   return () => { aktiv = false; };
 }
 

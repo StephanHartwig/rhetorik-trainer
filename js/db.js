@@ -48,6 +48,15 @@ export async function uebungLoeschen(id) {
   await tx('stuecke', 'readwrite', (s) => s.delete(tonBereich(id)));
   await tx('stuecke', 'readwrite', (s) => s.delete(bereich(id)));
   await tx('uebungen', 'readwrite', (s) => s.delete(id));
+  // War das eine Aufgabe des heutigen Tagesprogramms, gilt sie wieder als offen.
+  try {
+    const h = JSON.parse(localStorage.getItem('rt.heute'));
+    if (h && h.erledigt) {
+      let anders = false;
+      for (const k of Object.keys(h.erledigt)) if (h.erledigt[k] === id) { delete h.erledigt[k]; anders = true; }
+      if (anders) localStorage.setItem('rt.heute', JSON.stringify(h));
+    }
+  } catch (e) {}
 }
 
 // Die Aufnahme einer Übung als eine Datei (aus den Stücken zusammengesetzt)

@@ -1,11 +1,11 @@
 // Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2100';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2100';
-import { ziehe } from './begriffe.js?v=2100';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=2100';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2100';
-import * as G from './geraet.js?v=2100';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2101';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2101';
+import { ziehe } from './begriffe.js?v=2101';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=2101';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2101';
+import * as G from './geraet.js?v=2101';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
@@ -196,7 +196,8 @@ export function redeAblauf(app, E, merke, opt = {}) {
       const sig = signalFuer(E, soll);
       if (sig && sig < soll && !gesignalt && rest <= sig) { gesignalt = true; G.signal(2); }
       if (el >= soll + UEBERZUG_MAX) { beenden('automatisch'); return; }
-      if (aufnahme && aufnahme.fehler) status.textContent = 'Achtung: Fehler beim Speichern der Aufnahme';
+      // Lässt sich nichts mehr speichern (meist: Speicher voll), sofort beenden statt weiter ins Leere aufzunehmen
+      if (aufnahme && aufnahme.fehler) { beenden('speicherfehler'); return; }
       // Stimme
       if (p != null) {
         pegelMax = Math.max(pegelMax, p);

@@ -1,6 +1,6 @@
 // Impulse für die Schlagfertigkeit und Einwände ziehen: zufällig, ohne Wiederholung, bis ein Vorrat durch ist.
 // Die eingebauten Listen werden nirgends angezeigt. Nur eigene Einträge sind einsehbar.
-import { IMPULSE } from './impulse-daten.js?v=2100';
+import { IMPULSE } from './impulse-daten.js?v=2101';
 
 const K_VERBRAUCHT = 'rt.impulse.verbraucht';
 const K_EIGENE = { angriff: 'rt.impulse.eigene', einwand: 'rt.einwand.eigene' };
@@ -32,7 +32,7 @@ export function eigenenLoeschen(sorte, text) { schreib(K_EIGENE[sorte], eigene(s
 // Zieht aus einem Topf, ohne Wiederholung, bis er leer ist. Danach beginnt er von vorn.
 function ausTopf(name, alle) {
   const verbraucht = lies(K_VERBRAUCHT, {});
-  let weg = (verbraucht[name] || []).filter((t) => alle.includes(t));
+  let weg = (Array.isArray(verbraucht[name]) ? verbraucht[name] : []).filter((t) => alle.includes(t));
   if (weg.length >= alle.length) weg = [];
   const frei = alle.filter((t) => !weg.includes(t));
   const text = frei[Math.floor(Math.random() * frei.length)];
