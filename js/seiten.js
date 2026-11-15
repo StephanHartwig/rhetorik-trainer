@@ -1,13 +1,14 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=18';
-import { fmtZeit, laden } from './store.js?v=18';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=18';
-import { koerperMessen } from './koerper.js?v=18';
-import { coachTeil } from './coach.js?v=18';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=18';
-import { messen, MODELLE, luftHolen } from './messung.js?v=18';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=18';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=18';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=19';
+import { fmtZeit, laden } from './store.js?v=19';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=19';
+import { koerperMessen } from './koerper.js?v=19';
+import { coachTeil } from './coach.js?v=19';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=19';
+import * as I from './impulse.js?v=19';
+import { messen, MODELLE, luftHolen } from './messung.js?v=19';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=19';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=19';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -217,7 +218,7 @@ export function uebungSeite(app, id) {
     fuelle(app, 
       kopf('Ergebnis'),
       h('div', { class: 'begriffTitel', lang: 'de' }, u.aufgabe),
-      h('p', { class: 'grau' }, [MODUS[u.modus] || u.modus, u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', 'Aufbau ' + u.aufbau, datumText(u.datum)].join(' · ')),
+      h('p', { class: 'grau' }, [(MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''), u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', u.aufbau ? 'Aufbau ' + u.aufbau : null, datumText(u.datum)].filter(Boolean).join(' · ')),
       u.status !== 'fertig' ? h('p', { class: 'warn' }, 'Diese Aufnahme wurde nicht sauber beendet. Die Zeiten fehlen deshalb.') : null,
       h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Zeit'),
         h('table', { class: 'werte' },
@@ -254,28 +255,40 @@ export function uebungSeite(app, id) {
   return () => { aktiv = false; if (url) URL.revokeObjectURL(url); };
 }
 
-// ---------- Eigene Begriffe ----------
-export function eigeneSeite(app) {
-  const feld = h('input', { type: 'text', class: 'text', placeholder: 'Neuer Begriff', maxlength: 80, enterkeyhint: 'done' });
+// ---------- Eigene Begriffe, eigene Angriffe, eigene Einwände ----------
+const EIGEN = {
+  begriff: { titel: 'Eigene Begriffe', neu: 'Neuer Begriff', schon: 'Diesen Begriff gibt es schon.', leer: 'Noch keine eigenen Begriffe.', max: 80,
+    text: 'Eigene Begriffe werden unter die eingebauten gemischt. Nur diese Liste ist einsehbar.',
+    liste: eigeneBegriffe, dazu: eigenenHinzufuegen, weg: eigenenLoeschen },
+  angriff: { titel: 'Eigene Angriffe', neu: 'Neuer Angriff oder Vorwurf', schon: 'Diesen Angriff gibt es schon.', leer: 'Noch keine eigenen Angriffe.', max: 120,
+    text: 'Eigene Angriffe werden bei der Schlagfertigkeit unter die eingebauten gemischt. Nur diese Liste ist einsehbar.',
+    liste: () => I.eigene('angriff'), dazu: (t) => I.eigenenHinzufuegen('angriff', t), weg: (t) => I.eigenenLoeschen('angriff', t) },
+  einwand: { titel: 'Eigene Einwände', neu: 'Neuer Einwand', schon: 'Diesen Einwand gibt es schon.', leer: 'Noch keine eigenen Einwände.', max: 120,
+    text: 'Eigene Einwände werden unter die eingebauten gemischt. Nur diese Liste ist einsehbar.',
+    liste: () => I.eigene('einwand'), dazu: (t) => I.eigenenHinzufuegen('einwand', t), weg: (t) => I.eigenenLoeschen('einwand', t) },
+};
+export function eigeneSeite(app, sorte = 'begriff') {
+  const S = EIGEN[sorte] || EIGEN.begriff;
+  const feld = h('input', { type: 'text', class: 'text', placeholder: S.neu, maxlength: S.max, enterkeyhint: 'done' });
   const meldung = h('div', { class: 'hinweis' });
   const liste = h('div', {});
   const dazu = () => {
     if (!feld.value.trim()) return;
-    meldung.textContent = eigenenHinzufuegen(feld.value) ? '' : 'Diesen Begriff gibt es schon.';
+    meldung.textContent = S.dazu(feld.value) ? '' : S.schon;
     feld.value = ''; zeichne();
   };
   feld.addEventListener('keydown', (e) => { if (e.key === 'Enter') dazu(); });
   function zeichne() {
-    const l = eigeneBegriffe();
+    const l = S.liste();
     fuelle(liste, (l.length ? l.map((t) => h('div', { class: 'zeile eigen' },
       h('span', { lang: 'de' }, t),
-      h('button', { class: 'rund', 'aria-label': 'löschen', onclick: () => { if (confirm('„' + t + '“ löschen?')) { eigenenLoeschen(t); zeichne(); } } }, '×')))
-      : [h('p', { class: 'grau' }, 'Noch keine eigenen Begriffe.')]));
+      h('button', { class: 'rund', 'aria-label': 'löschen', onclick: () => { if (confirm('„' + t + '“ löschen?')) { S.weg(t); zeichne(); } } }, '×')))
+      : [h('p', { class: 'grau' }, S.leer)]));
   }
   zeichne();
   fuelle(app, 
-    kopf('Eigene Begriffe', { ziel: '#/einstellungen' }),
-    h('p', { class: 'grau' }, 'Eigene Begriffe werden unter die eingebauten gemischt. Nur diese Liste ist einsehbar.'),
+    kopf(S.titel, { ziel: '#/einstellungen' }),
+    h('p', { class: 'grau' }, S.text),
     h('div', { class: 'zeile' }, feld, h('button', { class: 'rund', 'aria-label': 'hinzufügen', onclick: dazu }, '+')),
     meldung, liste);
   return null;

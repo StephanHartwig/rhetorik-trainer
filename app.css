@@ -197,3 +197,8 @@ details.klapp.frei > summary { font-size: 19px; padding: 6px 2px; }
 /* Automatische Auswertung */
 .bereit { color: var(--ok); font-size: 15px; }
 input.text[type="password"] { font-family: ui-monospace, Menlo, monospace; font-size: 15px; }
+
+/* Block 7: Tagesprogramm und Stimme aufwärmen */
+.gross.erledigt { background: linear-gradient(160deg, #16a34a, #15803d); }
+.laut { font-size: 34px; font-weight: 800; line-height: 1.3; margin: 18px 0 6px; overflow-wrap: anywhere; }
+.schritt { font-size: 21px; line-height: 1.4; }

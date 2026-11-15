@@ -1,15 +1,28 @@
-// Ablauf Stegreifrede: Einrichten → Begriff + Vorbereitung → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=18';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=18';
-import { ziehe } from './begriffe.js?v=18';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=18';
-import * as G from './geraet.js?v=18';
+// Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
+// Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=19';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=19';
+import { ziehe } from './begriffe.js?v=19';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=19';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=19';
+import * as G from './geraet.js?v=19';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
 const UEBERZUG_MAX = 600;   // spätestens 10 Minuten nach dem Soll endet die Aufnahme von selbst
 
-export function redeAblauf(app, E, merke) {
+const ART = {
+  rede: { titel: 'Stegreifrede', knopf: 'Begriff zeigen', satz: 'Der Begriff erscheint sofort. Kein Tauschen, kein Überspringen.' },
+  schlag: { titel: 'Schlagfertigkeit', knopf: 'Impuls zeigen', satz: 'Der Impuls erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte direkt.' },
+  einwand: { titel: 'Einwand', knopf: 'Einwand zeigen', satz: 'Der Einwand erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte mit einem bildhaften Vergleich.' },
+};
+
+// opt.modus: 'rede' | 'schlag' | 'einwand'
+// opt.heute: { nr, aufgabe(), fertig(meta) } für das Tagesprogramm – dort bleibt verdeckt, welche Übung kommt.
+export function redeAblauf(app, E, merke, opt = {}) {
+  const modus = opt.modus || 'rede', art = ART[modus], heute = opt.heute || null;
+  const sollZeit = () => (modus === 'rede' ? E.redezeit : modus === 'schlag' ? E.antwortSchlag : E.antwortEinwand);
+  const vorZeit = modus === 'rede' ? E.vorbereitung : 0;
   let aktiv = true, takt = null, aufnahme = null, messer = null, strom = null, pose = null, meta = null, ton = null;
   const video = h('video', { class: 'vorschau', playsinline: true, autoplay: true });
   video.muted = true;
@@ -27,26 +40,29 @@ export function redeAblauf(app, E, merke) {
   function einrichten() {
     const meldung = h('div', { class: 'hinweis fehler' });
     const platz = h('div', { class: 'hinweis' });
-    const zeit = h('span', { class: 'wert' }, fmtZeit(E.redezeit));
+    const zeit = h('span', { class: 'wert' }, fmtZeit(sollZeit()));
     const zeitHinweis = h('div', { class: 'hinweis' });
     const ausHinweis = h('div', { class: 'hinweis' });
-    const knopf = h('button', { class: 'gross', disabled: true, onclick: begriffZeigen }, 'Begriff zeigen');
+    const knopf = h('button', { class: 'gross', disabled: true, onclick: begriffZeigen }, heute ? 'Aufgabe ' + heute.nr + ' zeigen' : art.knopf);
     let kameraBereit = false, platzReicht = true;
     const knopfStand = () => { knopf.disabled = !(kameraBereit && platzReicht); };
 
     async function hinweise() {
-      zeit.textContent = fmtZeit(E.redezeit);
+      const soll = sollZeit();
+      zeit.textContent = fmtZeit(soll);
       const teile = [];
-      if (E.redezeit > 1200) teile.push('Über 20 Minuten wird nur der Ton aufgenommen, kein Video.');
-      const s = signalFuer(E, E.redezeit);
-      teile.push(s && s < E.redezeit ? 'Signalton ' + s + ' Sekunden vor Schluss.' : 'Kein Signalton.');
+      if (soll > 1200) teile.push('Über 20 Minuten wird nur der Ton aufgenommen, kein Video.');
+      const s = signalFuer(E, soll);
+      teile.push(s && s < soll ? 'Signalton ' + s + ' Sekunden vor Schluss.' : 'Kein Signalton.');
+      if (modus !== 'rede') teile.push('Die Antwortzeit änderst du im Zahnrad.');
       zeitHinweis.textContent = teile.join(' ');
       ausHinweis.textContent = E.ausschnitt === 'ganz'
         ? '2 bis 3 Meter Abstand, ganzer Körper im Bild. Beenden aus der Entfernung: beide Hände über den Kopf heben oder ' + STILLE_SEK + ' Sekunden schweigen.'
         : 'Gesicht und Schultern im Bild. Beenden mit „Fertig“.';
       const st = await speicherStand();
       if (!st) return;
-      const bedarf = E.redezeit * (E.redezeit > 1200 ? 12000 : 200000) * 1.5;
+      const laengste = heute ? Math.max(E.redezeit, E.antwortSchlag) : soll;
+      const bedarf = laengste * (laengste > 1200 ? 12000 : 200000) * 1.5;
       platzReicht = st.frei > bedarf;
       platz.className = 'hinweis' + (platzReicht ? '' : ' fehler');
       platz.textContent = !platzReicht ? 'Zu wenig Speicher für diese Aufnahme (frei: ' + mb(st.frei) + '). Bitte im Verlauf alte Aufnahmen löschen.'
@@ -57,13 +73,17 @@ export function redeAblauf(app, E, merke) {
     const zeitChips = chips(REDEZEITEN, E.redezeit, (v) => { merke('redezeit', v); hinweise(); });
 
     fuelle(app, 
-      kopf('Stegreifrede'),
+      kopf(heute ? 'Heute üben' : art.titel),
+      heute ? h('div', { class: 'begriffTitel' }, 'Aufgabe ' + heute.nr + ' von 2') : null,
+      heute && heute.nr === 2 ? h('p', {}, 'Aufgabe 1 ist geschafft. Die Auswertung machst du nach beiden Aufgaben.') : null,
       video, meldung,
       gruppe('Bildausschnitt', null, ausChips.el, ausHinweis),
-      gruppe('Redezeit', zeit, h('div', { class: 'hinweis' }, 'Minuten'), zeitChips.el, zeitHinweis),
+      heute ? null : modus === 'rede'
+        ? gruppe('Redezeit', zeit, h('div', { class: 'hinweis' }, 'Minuten'), zeitChips.el, zeitHinweis)
+        : gruppe('Antwortzeit', zeit, zeitHinweis),
       platz,
       h('p', { class: 'warn' }, 'Stromsparmodus aus? Das Batterie-Symbol darf nicht gelb sein.'),
-      h('p', { class: 'grau' }, 'Der Begriff erscheint sofort. Kein Tauschen, kein Überspringen.'),
+      h('p', { class: 'grau' }, heute ? 'Was kommt, siehst du erst nach dem Antippen. Kein Tauschen, kein Überspringen.' : art.satz),
       h('div', { class: 'fest' }, knopf));
     hinweise();
     G.kameraAn().then((s) => {
@@ -77,13 +97,13 @@ export function redeAblauf(app, E, merke) {
   function begriffZeigen() {
     G.tonAn(); G.wachAn();                       // beides muss direkt im Antippen starten
     const ganz = E.ausschnitt === 'ganz';
-    const soll = E.redezeit, nurTon = soll > 1200;
-    const b = ziehe(E.fachAnteil);
+    const soll = sollZeit(), nurTon = soll > 1200;
+    const b = heute ? heute.aufgabe() : modus === 'rede' ? ziehe(E.fachAnteil) : modus === 'schlag' ? zieheImpuls() : zieheEinwand();
     if (ganz) G.poseLaden().then((p) => { pose = p; }).catch(() => { handInfo.textContent = 'Handzeichen nicht verfügbar. Beenden durch Schweigen oder Antippen.'; });
     try { messer = G.pegelMesser(strom); } catch (e) { messer = null; }
     G.pcmVorbereiten().catch(() => {});       // Mitschnitt der Tonspur schon jetzt laden
 
-    const status = h('div', { class: 'status' }, 'Vorbereitung');
+    const status = h('div', { class: 'status' }, vorZeit ? 'Vorbereitung' : '');
     const uhr = h('div', { class: 'uhr' });
     const begriff = h('div', { class: 'begriff', lang: 'de' });
     const frageBox = h('div', { class: 'frage', hidden: true });
@@ -97,7 +117,9 @@ export function redeAblauf(app, E, merke) {
 
     const passe = (max) => {
       const laenge = Math.min(14, Math.max(...b.text.split(/[\s-]+/).map((w) => w.length)));
-      begriff.style.fontSize = Math.min(max, 125 / laenge) + 'vw';
+      // Ganze Sätze (Angriffe, Einwände) brauchen mehr Zeilen: Schrift so wählen, dass der Text auf die Bühne passt.
+      const flaeche = 0.8 * Math.sqrt(100 * (ganz ? 80 : 70) / (0.6 * b.text.length));
+      begriff.style.fontSize = Math.min(max, 125 / laenge, flaeche) + 'vw';
       begriff.textContent = b.text;
     };
     const zeigeUhr = (text) => { uhr.textContent = text; uhr.dataset.laenge = String(text.length); };
@@ -106,14 +128,15 @@ export function redeAblauf(app, E, merke) {
     passe(20);
     const proben = [];
     let t0 = performance.now(), phase = 'vor', gesignalt = false, beendet = false;
-    let schwelle = 0.008, boden = null, pegelMax = 0, letzteStimme = 0, frage = null, hand = 0, handStart = 0, handTick = 0;
+    let eingemessen = false, schwelle = 0.008, boden = null, pegelMax = 0, letzteStimme = 0, frage = null, hand = 0, handStart = 0, handTick = 0;
 
     async function starte() {
       phase = 'rede';
-      if (proben.length >= 5) { proben.sort((a, c) => a - c); boden = proben[Math.floor(proben.length * 0.2)]; schwelle = Math.min(0.02, Math.max(0.004, boden * 3)); }
+      if (proben.length >= 5) { proben.sort((a, c) => a - c); boden = proben[Math.floor(proben.length * 0.2)]; schwelle = Math.min(0.02, Math.max(0.004, boden * 3)); eingemessen = true; }
+      proben.length = 0;
       const jetzt = new Date();
-      meta = { id: String(jetzt.getTime()), datum: jetzt.toISOString(), tag: tagSchluessel(jetzt), modus: 'rede', aufgabe: b.text, kategorie: b.kategorie,
-               aufbau: E.aufbau, ausschnitt: E.ausschnitt, soll, ist: 0, typ: nurTon ? 'ton' : 'video', status: 'läuft', groesse: 0 };
+      meta = { id: String(jetzt.getTime()), datum: jetzt.toISOString(), tag: tagSchluessel(jetzt), modus, aufgabe: b.text, kategorie: b.kategorie || '', art: b.art || '',
+               aufbau: modus === 'rede' ? E.aufbau : '', heute: heute ? heute.nr : 0, ausschnitt: E.ausschnitt, soll, ist: 0, typ: nurTon ? 'ton' : 'video', status: 'läuft', groesse: 0 };
       uebungSpeichern(meta).catch(() => {});
       try { aufnahme = G.aufnahmeStarten(strom, meta.id, nurTon); }
       catch (e) { status.textContent = 'Die Aufnahme lässt sich nicht starten.'; clearInterval(takt); return; }
@@ -142,7 +165,7 @@ export function redeAblauf(app, E, merke) {
         diag: { boden, schwelle, pegelMax: Math.round(pegelMax * 1e4) / 1e4 },
       });
       try { await uebungSpeichern(meta); } catch (e) {}
-      geheZu('#/uebung/' + meta.id);
+      if (heute) heute.fertig(meta); else geheZu('#/uebung/' + meta.id);
     }
 
     async function abbrechen() {
@@ -159,7 +182,7 @@ export function redeAblauf(app, E, merke) {
       const p = messer ? messer.lies() : null;
       if (phase === 'vor') {
         if (p != null) proben.push(p);
-        const rest = E.vorbereitung - el;
+        const rest = vorZeit - el;
         zeigeUhr(String(Math.max(0, Math.ceil(rest))));
         if (rest <= 0) starte();
         return;
@@ -173,7 +196,18 @@ export function redeAblauf(app, E, merke) {
       if (el >= soll + UEBERZUG_MAX) { beenden('automatisch'); return; }
       if (aufnahme && aufnahme.fehler) status.textContent = 'Achtung: Fehler beim Speichern der Aufnahme';
       // Stimme
-      if (p != null) { pegelMax = Math.max(pegelMax, p); if (p > schwelle) letzteStimme = el; }
+      if (p != null) {
+        pegelMax = Math.max(pegelMax, p);
+        // Ohne Vorbereitungszeit misst sich die Schwelle während des Sprechens ein: Die leisesten Augenblicke sind der Raum.
+        if (!eingemessen && proben.length < 3000) {
+          proben.push(p);
+          if (proben.length >= 30 && proben.length % 10 === 0) {
+            const sortiert = proben.slice().sort((a, c) => a - c);
+            boden = sortiert[Math.floor(sortiert.length * 0.1)]; schwelle = Math.min(0.02, Math.max(0.004, boden * 3));
+          }
+        }
+        if (p > schwelle) letzteStimme = el;
+      }
       if (!ganz) return;
       // Schweigen mit Nachfrage
       if (!frage && el > 8 && el - letzteStimme >= STILLE_SEK) { frage = el; G.signal(1, 520); frageBox.hidden = false; }
