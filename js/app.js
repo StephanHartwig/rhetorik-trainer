@@ -1,17 +1,19 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=20';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=20';
-import { redeAblauf } from './rede.js?v=20';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=20';
-import { verlaufSeite, startInfo } from './verlauf.js?v=20';
-import { autoSeite } from './auto-seite.js?v=20';
-import { autoStand } from './auto.js?v=20';
-import { eigeneBegriffe } from './begriffe.js?v=20';
-import { eigene } from './impulse.js?v=20';
-import { heuteSeite, heuteStand } from './heute.js?v=20';
-import { stimmeSeite } from './stimme.js?v=20';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2001';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=2001';
+import { redeAblauf } from './rede.js?v=2001';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=2001';
+import { verlaufSeite, startInfo } from './verlauf.js?v=2001';
+import { autoSeite } from './auto-seite.js?v=2001';
+import { autoStand } from './auto.js?v=2001';
+import { eigeneBegriffe } from './begriffe.js?v=2001';
+import { eigene } from './impulse.js?v=2001';
+import { heuteSeite, heuteStand } from './heute.js?v=2001';
+import { stimmeSeite } from './stimme.js?v=2001';
 
-const VERSION = 20;
+const VERSION = 2001;
+// Ab 20.1 steckt die Unterstufe in der Zahl: 2001 wird als „20.1“ angezeigt.
+const fassungText = (n) => (n >= 1000 ? Math.floor(n / 100) + '.' + (n % 100) : String(n));
 const app = document.getElementById('app');
 let E = laden();
 const merke = (k, v) => { E[k] = v; E = speichern(E); };
@@ -24,7 +26,7 @@ fetch('index.html?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.text())
 }).catch(() => {});
 function updateKnopf() {
   if (!neueFassung) return null;
-  return h('button', { class: 'breit rot', onclick: () => location.replace('./?v=' + Date.now()) }, 'Neue Fassung laden (' + neueFassung + ')');
+  return h('button', { class: 'breit rot', onclick: () => location.replace('./?v=' + Date.now()) }, 'Neue Fassung laden (' + fassungText(Number(neueFassung)) + ')');
 }
 
 // ---------- Startbildschirm ----------
@@ -117,7 +119,7 @@ function einstellungen() {
     h('button', { class: 'breit', onclick: () => {
       if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { E = speichern({ ...STANDARD }); zeigen(); }
     } }, 'Auf Standard zurücksetzen'),
-    h('div', { class: 'fuss grau' }, 'Fassung ' + VERSION + ' · ', h('a', { href: 'probe.html' }, 'Technik-Probe öffnen')),
+    h('div', { class: 'fuss grau' }, 'Fassung ' + fassungText(VERSION) + ' · ', h('a', { href: 'probe.html' }, 'Technik-Probe öffnen')),
   ];
 }
 
