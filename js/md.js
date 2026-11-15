@@ -1,6 +1,6 @@
 // Stellt die Antwort des Coachs lesbar dar: Überschriften, Fettdruck, Listen und Tabellen statt roher Zeichen.
 // Baut nur Textknoten und feste Elemente, führt also nichts aus dem eingefügten Text aus.
-import { h } from './ui.js?v=2005';
+import { h } from './ui.js?v=2100';
 
 function zeile(text) {
   const teile = String(text).split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/);

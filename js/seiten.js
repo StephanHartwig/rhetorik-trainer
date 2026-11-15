@@ -1,14 +1,15 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2005';
-import { fmtZeit, laden } from './store.js?v=2005';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2005';
-import { koerperMessen } from './koerper.js?v=2005';
-import { coachTeil } from './coach.js?v=2005';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2005';
-import * as I from './impulse.js?v=2005';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2005';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2005';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2005';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2100';
+import { fmtZeit, laden } from './store.js?v=2100';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2100';
+import { koerperMessen } from './koerper.js?v=2100';
+import { coachTeil } from './coach.js?v=2100';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2100';
+import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2100';
+import * as I from './impulse.js?v=2100';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2100';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2100';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2100';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -232,13 +233,24 @@ export function uebungSeite(app, id) {
       if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;
       await uebungLoeschen(u.id); geheZu('#/verlauf');
     };
+    // Export für Klara: Markdown-Datei mit Paket und Feedback über das Teilen-Menü
+    const klaraInfo = h('div', { class: 'hinweis' });
+    const klaraKnopf = h('button', { class: 'breit', onclick: () => {
+      if (!u.messung) { klaraInfo.textContent = 'Erst „Messwerte berechnen“. Ohne Messwerte gibt es nichts zu exportieren.'; return; }
+      const d = klaraDatei(u);
+      dateiAbgeben(d.name, d.text, 'text/markdown').then((wie) => {
+        klaraInfo.textContent = wie === 'abgebrochen' ? '' : 'Datei ' + d.name + (wie === 'geladen' ? ' wurde geladen.' : ' wurde übergeben.') + (u.feedback ? '' : ' Sie enthält noch kein Feedback des Coachs.');
+      }).catch((e) => { klaraInfo.textContent = 'Der Export hat nicht geklappt (' + (e.name || e.message) + ').'; });
+    } }, 'Für Klara exportieren');
     fuelle(app, 
       kopf('Ergebnis', { rechts: h('button', { class: 'rad', 'aria-label': 'Übung löschen', onclick: loeschen }, '🗑') }),
       h('div', { class: 'begriffTitel', lang: 'de' }, u.aufgabe),
       h('p', { class: 'grau' }, [(MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''), u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', u.aufbau ? 'Aufbau ' + u.aufbau : null, datumText(u.datum)].filter(Boolean).join(' · ')),
       u.status !== 'fertig' ? h('p', { class: 'warn' }, 'Diese Aufnahme wurde nicht sauber beendet. Die Zeiten fehlen deshalb.') : null,
+      u.ohneAufnahme ? h('p', { class: 'grau' }, 'Diese Übung stammt aus einer Sicherung. Video und Einzelbilder sind nicht dabei, neu messen geht deshalb nicht.') : null,
       u.fehler ? h('p', { class: 'hinweis fehler' }, 'Beim Speichern der Aufnahme gab es einen Fehler: ' + u.fehler) : null,
       bereich,
+      u.status === 'fertig' ? [klaraKnopf, klaraInfo] : null,
       klappe('zeit', 'Zeit', u.status === 'fertig' ? fmtZeit(u.ist) + ' von ' + fmtZeit(u.soll) : '',
         h('table', { class: 'werte' },
           zeile('Soll', fmtZeit(u.soll)),

@@ -1,9 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2005';
-import { fmtZeit } from './store.js?v=2005';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2005';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2005';
-import { entwirren } from './auto.js?v=2005';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2100';
+import { fmtZeit } from './store.js?v=2100';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2100';
+import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2100';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2100';
+import { entwirren } from './auto.js?v=2100';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -58,6 +59,39 @@ function kurve(titel, punkte, opt = {}) {
   return klapp(titel, 'gruppe', [name, wert], bild, opt.skala ? h('div', { class: 'skala' }, h('span', {}, opt.skala[0]), h('span', {}, opt.skala[1])) : null, zeile);
 }
 
+// Sicherung: Verlauf als Datei abgeben und wieder einlesen (ohne Aufnahmen)
+function sicherungTeil(anzahl, neuLaden) {
+  const info = h('div', { class: 'hinweis' });
+  const sag = (t, fehler) => { info.className = 'hinweis' + (fehler ? ' fehler' : ''); info.textContent = t; };
+  // Die Datei muss fertig sein, bevor getippt wird: Das Teilen-Menü öffnet sich nur direkt im Antippen.
+  let bereit = null;
+  sicherungBauen().then((d) => { bereit = d; }).catch(() => {});
+  const wahl = h('input', { type: 'file', accept: '.json,application/json,text/plain', hidden: true });
+  wahl.addEventListener('change', async () => {
+    const datei = wahl.files && wahl.files[0];
+    wahl.value = '';
+    if (!datei) return;
+    try {
+      const p = sicherungPruefen(await datei.text());
+      const vom = p.datum ? new Date(p.datum).toLocaleDateString('de-DE') : 'unbekanntem Datum';
+      if (!confirm('Sicherung vom ' + vom + ' mit ' + p.anzahl + (p.anzahl === 1 ? ' Übung' : ' Übungen') + ' einlesen? Vorhandene Übungen bleiben erhalten.')) return;
+      const mitE = confirm('Auch die Einstellungen aus der Sicherung übernehmen? „Abbrechen“ behält die Einstellungen dieses Geräts.');
+      const r = await sicherungEinlesen(p.daten, mitE);
+      alert(r.neu + (r.neu === 1 ? ' Übung' : ' Übungen') + ' eingelesen' + (r.schon ? ', ' + r.schon + ' waren schon vorhanden' : '') + '.');
+      location.reload();
+    } catch (e) { sag(e.message, true); }
+  });
+  return h('details', { class: 'klapp gruppe' }, h('summary', {}, h('span', {}, 'Sicherung')),
+    h('p', { class: 'grau' }, 'Die Sicherung enthält alle Übungen mit Messwerten, Transkript, Note und Feedback, dazu Einstellungen und eigene Listen. Nicht enthalten: Videos, Einzelbilder und der Schlüssel der automatischen Auswertung.'),
+    h('button', { class: 'breit', disabled: !anzahl, onclick: () => {
+      if (!bereit) { sag('Die Sicherung wird noch vorbereitet. Bitte gleich noch einmal antippen.'); return; }
+      dateiAbgeben(bereit.name, bereit.text, 'application/json').then((wie) => { if (wie !== 'abgebrochen') sag('Sicherung mit ' + bereit.anzahl + (bereit.anzahl === 1 ? ' Übung' : ' Übungen') + (wie === 'geladen' ? ' geladen: ' : ' übergeben: ') + bereit.name); })
+        .catch((e) => sag('Die Sicherung hat nicht geklappt (' + (e.name || e.message) + ').', true));
+    } }, 'Verlauf exportieren'),
+    h('button', { class: 'breit', onclick: () => wahl.click() }, 'Verlauf einlesen'),
+    wahl, info);
+}
+
 export function verlaufSeite(app) {
   let aktiv = true;
   fuelle(app, kopf('Verlauf'), h('p', { class: 'grau' }, 'Lade …'));
@@ -83,6 +117,8 @@ export function verlaufSeite(app) {
       liste.length ? klapp('Übungen', 'frei', [h('span', {}, 'Übungen'), h('span', { class: 'wert' }, String(liste.length))], uebungsListe(liste))
         : h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.')),
       liste.length ? h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '. Antippen öffnet eine Übung. Der Papierkorb löscht eine einzelne Übung, „Mehrere auswählen“ löscht mehrere auf einmal.') : null);
+
+    app.append(sicherungTeil(liste.length));
 
     // Liste der Übungen: einzeln löschen per Papierkorb oder mehrere ankreuzen und zusammen löschen
     function uebungsListe(liste) {

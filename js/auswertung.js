@@ -1,12 +1,13 @@
 // Auswertungspaket für den Coach bauen, Ergebniscode (RT1|…) lesen, Serie der Übungstage zählen.
-import { fmtZeit, tagSchluessel } from './store.js?v=2005';
+import { fmtZeit, tagSchluessel } from './store.js?v=2100';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
 const vz = (x) => (x > 0 ? '+' : x < 0 ? '−' : '±') + Math.abs(x);
 
 // ---------- Auswertungspaket (Format: COACH_Projektanweisung, Abschnitt 2) ----------
-export function paketText(u) {
+// opt.ohneWunsch: ohne den Auftrag an den Coach am Ende (für den Export)
+export function paketText(u, opt = {}) {
   const z = [];
   const d = Math.round(u.ist - u.soll), p = Math.round((u.ist - u.soll) / u.soll * 100);
   z.push('RHETORIK-TRAINER · AUSWERTUNGSPAKET');
@@ -62,6 +63,7 @@ export function paketText(u) {
     u.bilder.forEach((b, i) => z.push((i + 1) + ' · ' + fmtZeit(b.t) + ' · ' + b.grund));
   }
   // Auflösung: Bei den kurzen Übungen will Stephan sehen, wie er es hätte sagen können – in drei Varianten.
+  if (opt.ohneWunsch) return z.join('\n');
   if (u.modus === 'schlag') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt einer Musterantwort eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diese Aussage, jede mit einer anderen Technik. Nenne zu jeder Variante die Technik und schreib die Antwort wörtlich aus, höchstens drei Sätze.');
   if (u.modus === 'einwand') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt eines einzelnen alternativen Bildes eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diesen Einwand, jede mit einem bildhaften Vergleich aus einer anderen Welt und mit der Brücke „Und genauso ist es mit …“. Schreib jede Antwort wörtlich aus, höchstens drei Sätze.');
   return z.join('\n');

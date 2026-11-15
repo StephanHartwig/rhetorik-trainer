@@ -1,11 +1,11 @@
 // Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2005';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2005';
-import { ziehe } from './begriffe.js?v=2005';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=2005';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2005';
-import * as G from './geraet.js?v=2005';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2100';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2100';
+import { ziehe } from './begriffe.js?v=2100';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=2100';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2100';
+import * as G from './geraet.js?v=2100';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
