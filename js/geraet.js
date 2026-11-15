@@ -1,5 +1,5 @@
 // Gerätefunktionen: Kamera, Ton (Signal, Pegel), Bildschirm an, Aufnahme
-import { stueckSpeichern, pcmSpeichern } from './db.js?v=11';
+import { stueckSpeichern, pcmSpeichern } from './db.js?v=12';
 
 // ---------- Kamera und Mikrofon ----------
 let stream;
@@ -89,6 +89,7 @@ export function wachAn() {
   if (!sperreOk()) videoStarten();
   sperreHolen().then(() => { if (sperreOk() && wachVideo && !wachVideo.paused) wachVideo.pause(); });
 }
+export const wachOk = () => sperreOk() || !!(wachVideo && !wachVideo.paused);
 export function wachAus() {
   wachSoll = false;
   try { if (sperre) sperre.release(); } catch (e) {}
@@ -128,7 +129,7 @@ export function aufnahmeStarten(s, id, nurTon) {
 let wlModul;
 export function pcmVorbereiten() {
   if (!ctx || !ctx.audioWorklet) return Promise.reject(new Error('kein AudioWorklet'));
-  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=11').catch((e) => { wlModul = null; throw e; }));
+  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=12').catch((e) => { wlModul = null; throw e; }));
 }
 export async function pcmStarten(s, id) {
   await pcmVorbereiten();

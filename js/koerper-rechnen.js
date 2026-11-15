@@ -3,7 +3,8 @@
 //               gesicht: { yaw, pitch, blinzeln, hor, hoch, runter, laecheln, brauenHoch, brauenRunter, wange, augeWeit } | null }
 // Längen der Pose sind Bildpunkte; sw = Schulterbreite.
 
-const BLICK_GRAD = 20;          // so weit darf der Kopf von der Kamera weggedreht sein
+const BLICK_GRAD = 25;          // so weit darf der Kopf von der Kamera weggedreht sein
+const LAECHELN = 0.5;           // ab diesem Wert zählt der Mund als Lächeln (Sprechen allein liegt meist darunter)
 const runde = (x, n = 0) => Math.round(x * 10 ** n) / 10 ** n;
 const median = (w) => { const s = [...w].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
 function streuung(w) {
@@ -14,7 +15,7 @@ function streuung(w) {
 const anteil = (teil, ganz) => (ganz ? Math.round(100 * teil / ganz) : 0);
 
 function blickGanz(g) { return Math.abs(g.yaw) <= BLICK_GRAD && Math.abs(g.pitch) <= BLICK_GRAD; }
-function blickNah(g) { return blickGanz(g) && g.hor <= 0.45 && g.hoch <= 0.35 && g.runter <= 0.55; }
+function blickNah(g) { return blickGanz(g) && g.hor <= 0.5 && g.hoch <= 0.4 && g.runter <= 0.65; }
 
 export function koerperAuswerten(proben, modus, dauer) {
   const hinweise = [], werte = { modus, bilder: proben.length };
@@ -33,18 +34,23 @@ export function koerperAuswerten(proben, modus, dauer) {
         const nah = mit.filter((q) => Math.abs(q.t - p.t) <= 2.5).map((q) => q.pose[schluessel] / sw);
         return p.pose[schluessel] / sw - median(nah);
       });
-      werte.schwankenSchulter = runde(100 * streuung(entzerrt('sx')));
-      werte.schwankenHuefte = runde(100 * streuung(entzerrt('hx')));
+
       // Standortwechsel: Hüfte verschiebt sich binnen 2 Sekunden deutlich, oder die Person kommt näher / geht zurück
       let wechsel = 0, letzter = -9;
+      const wechselZeiten = [];
       for (let i = 0; i < mit.length; i++) {
         const p = mit[i]; let j = i;
         while (j > 0 && p.t - mit[j].t < 2) j--;
         if (j === i || p.t - mit[j].t > 4) continue;
         const q = mit[j], seit = Math.abs(p.pose.hx - q.pose.hx) / sw, zoom = p.pose.sw / q.pose.sw;
-        if ((seit > 0.6 || zoom > 1.2 || zoom < 0.83) && p.t - letzter >= 2) { wechsel++; letzter = p.t; }
+        if ((seit > 0.6 || zoom > 1.2 || zoom < 0.83) && p.t - letzter >= 2) { wechsel++; letzter = p.t; wechselZeiten.push(p.t); }
       }
       werte.standortwechsel = wechsel;
+      // Schwanken im Stand: die Sekunden rund um einen Standortwechsel zählen nicht mit
+      const ruhig = (werteListe) => werteListe.filter((_, i) => wechselZeiten.every((z) => Math.abs(mit[i].t - z) > 2.5));
+      const rs = ruhig(entzerrt('sx')), rh = ruhig(entzerrt('hx'));
+      werte.schwankenSchulter = rs.length >= 8 ? runde(100 * streuung(rs)) : null;
+      werte.schwankenHuefte = rh.length >= 8 ? runde(100 * streuung(rh)) : null;
       werte.fuesseSichtbar = anteil(mit.filter((p) => p.pose.fuss).length, mit.length);
       if (werte.fuesseSichtbar < 50) hinweise.push('Die Füße waren meist nicht im Bild. Schritte lassen sich deshalb nur am Oberkörper schätzen.');
       const beide = mit.filter((p) => p.pose.haende[0].v > 0.5 && p.pose.haende[1].v > 0.5).length;
@@ -73,7 +79,7 @@ export function koerperAuswerten(proben, modus, dauer) {
     } else {
       werte.blick = anteil(gesichter.filter((p) => blickNah(p.gesicht)).length, gesichter.length);
       // Mimik: Zustand je Bild, Wechsel zählen (ein Zustand muss zwei Bilder lang halten)
-      const zustand = (g) => (g.laecheln > 0.35 ? 'L' : g.brauenHoch > 0.4 ? 'H' : g.brauenRunter > 0.4 ? 'R' : 'N');
+      const zustand = (g) => (g.laecheln > LAECHELN ? 'L' : g.brauenHoch > 0.4 ? 'H' : g.brauenRunter > 0.4 ? 'R' : 'N');
       const mit = proben.filter((p) => p.gesicht);
       let aktuell = null, kandidat = null, wechsel = 0;
       const delta = [];
@@ -92,12 +98,21 @@ export function koerperAuswerten(proben, modus, dauer) {
       }
       werte.mimikWechsel = wechsel;
       werte.mimikWechselJeMinute = runde(wechsel / Math.max(dauer, 1) * 60, 1);
-      werte.laecheln = anteil(mit.filter((p) => p.gesicht.laecheln > 0.35).length, mit.length);
+      werte.laecheln = anteil(mit.filter((p) => p.gesicht.laecheln > LAECHELN).length, mit.length);
       werte.mimikBewegung = delta.length >= 5 ? runde(100 * delta.reduce((a, b) => a + b, 0) / delta.length) : null;
     }
   }
   // Kopfhaltung in der Mitte, zum Nachjustieren der Schwellen
-  if (gesichter.length) werte.diag = { yaw: runde(median(gesichter.map((p) => p.gesicht.yaw))), pitch: runde(median(gesichter.map((p) => p.gesicht.pitch))), gesichter: gesichter.length };
+  if (gesichter.length) {
+    const g = gesichter.map((p) => p.gesicht), q = (w, x) => { const s = [...w].sort((a, b) => a - b); return runde(s[Math.min(s.length - 1, Math.floor(s.length * x))], 2); };
+    werte.diag = {
+      yaw: runde(median(g.map((x) => x.yaw))), pitch: runde(median(g.map((x) => x.pitch))), gesichter: g.length,
+      // wie oft welche Regel den Blick als „weg" gewertet hat, und die Verteilung des Lächel-Werts
+      wegKopf: anteil(g.filter((x) => !blickGanz(x)).length, g.length), wegSeite: anteil(g.filter((x) => x.hor > 0.5).length, g.length),
+      wegHoch: anteil(g.filter((x) => x.hoch > 0.4).length, g.length), wegRunter: anteil(g.filter((x) => x.runter > 0.65).length, g.length),
+      laecheln50: q(g.map((x) => x.laecheln), 0.5), laecheln90: q(g.map((x) => x.laecheln), 0.9),
+    };
+  }
   return { werte, hinweise, bewegung };
 }
 

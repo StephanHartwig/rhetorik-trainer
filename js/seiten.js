@@ -1,12 +1,12 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=11';
-import { fmtZeit, laden } from './store.js?v=11';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=11';
-import { koerperMessen } from './koerper.js?v=11';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=11';
-import { messen, MODELLE, luftHolen } from './messung.js?v=11';
-import { wachAn, wachAus, erkennungSchliessen } from './geraet.js?v=11';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=11';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=12';
+import { fmtZeit, laden } from './store.js?v=12';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=12';
+import { koerperMessen } from './koerper.js?v=12';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=12';
+import { messen, MODELLE } from './messung.js?v=12';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=12';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=12';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -33,8 +33,8 @@ function koerperTeil(u) {
   const reihen = [];
   if (k.modus === 'ganz') {
     if (!k.standUnsicher) reihen.push(
-      zeile('Schwanken der Schultern', k.schwankenSchulter + ' % der Schulterbreite'),
-      zeile('Schwanken der Hüfte', k.schwankenHuefte + ' % der Schulterbreite'),
+      zeile('Schwanken der Schultern', nm(k.schwankenSchulter, ' % der Schulterbreite')),
+      zeile('Schwanken der Hüfte', nm(k.schwankenHuefte, ' % der Schulterbreite')),
       zeile('Standortwechsel', String(k.standortwechsel)),
       zeile('Beide Hände sichtbar', k.haendeSichtbar + ' % der Zeit'),
       zeile('Handbewegung', nm(k.handBewegung, '')));
@@ -57,7 +57,7 @@ function koerperTeil(u) {
     k.modus === 'ganz'
       ? h('div', { class: 'hinweis' }, 'Handbewegung: 100 entspricht einer Schulterbreite je Sekunde. Der Blick wird aus der Entfernung über die Kopfhaltung geschätzt. Geprüft wurde alle ' + String(k.schritt).replace('.', ',') + ' Sekunden ein Bild' + (k.sparsam ? ' (sparsame Betriebsart).' : '.'))
       : h('div', { class: 'hinweis' }, 'Bewegung im Gesicht ist eine Kennzahl ohne Einheit: höher bedeutet mehr Wechsel in Stirn, Wangen und Mund. Geprüft wurde alle ' + String(k.schritt).replace('.', ',') + ' Sekunden ein Bild.'),
-    k.diag ? h('div', { class: 'hinweis' }, 'Prüfwert für die Feinabstimmung: Kopfhaltung ' + k.diag.yaw + '° / ' + k.diag.pitch + '°, erkannt in ' + k.erkannt + ' % der Bilder.') : null,
+    k.diag ? h('div', { class: 'hinweis' }, 'Prüfwert für die Feinabstimmung: Kopfhaltung ' + k.diag.yaw + '° / ' + k.diag.pitch + '°, erkannt in ' + k.erkannt + ' % der Bilder' + (k.diag.laecheln90 != null ? '. Blick weg wegen Kopf ' + k.diag.wegKopf + ' %, Seite ' + k.diag.wegSeite + ' %, oben ' + k.diag.wegHoch + ' %, unten ' + k.diag.wegRunter + ' %. Lächel-Wert Mitte ' + k.diag.laecheln50 + ', oberes Zehntel ' + k.diag.laecheln90 : '') + '.') : null,
     u.bilder && u.bilder.length ? h('div', { class: 'hinweis' }, 'Einzelbilder für die Auswertung (' + u.bilder.length + '):') : null,
     leiste);
 }
@@ -65,17 +65,29 @@ function koerperTeil(u) {
 // ---------- Messwerte (Schätzungen des Geräts) ----------
 function messTeil(u, ruhe) {
   const box = h('div', {});
-  const absturz = absturzPruefen();
-  let fehlerText = '';
+  // Nach dem Körper-Schritt hat sich die Seite neu geladen: jetzt geht es mit dem Transkript weiter.
+  const rest = lauf.lies();
+  const weiter = !!(rest && rest.phase === 'weiter');
+  if (weiter) lauf.weg();
+  const absturz = weiter ? null : absturzPruefen();
+  let fehlerText = '', autoStart = weiter && rest.id === u.id;
   const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
   const zahl = (x, einheit = '') => (x == null ? 'nicht messbar' : String(x).replace('.', ',') + einheit);
   // neu = true: alles neu messen. Sonst nur, was noch fehlt.
   function starte(knopf, stand, neu) {
     knopf.disabled = true; stand.className = 'hinweis'; wachAn();
+    // Ohne Antippen (nach dem Neuladen) hält das iPhone den Bildschirm nicht immer an: dann um einen Tipp bitten.
+    setTimeout(() => {
+      if (wachOk() || !knopf.isConnected) return;
+      const bitte = h('p', { class: 'warn' }, 'Bitte einmal irgendwo auf den Bildschirm tippen, damit er an bleibt.');
+      stand.before(bitte);
+      document.addEventListener('pointerdown', () => { wachAn(); bitte.remove(); }, { once: true });
+    }, 1500);
     const modus = koerperModus(), wahl = laden().transkript;
     const mitKoerper = neu !== 'ton' && u.typ === 'video' && modus !== 'aus' && (neu || !u.koerper || u.koerper.fehler);
     const mitTon = !!neu || !u.messung;
-    const melde = (schritt) => (t) => { stand.textContent = (mitKoerper && mitTon ? 'Schritt ' + schritt + ' von 2 · ' : '') + t; };
+    const zwei = (mitKoerper && mitTon) || (neu === 'ton' && weiter);
+    const melde = (schritt) => (t) => { stand.textContent = (zwei ? 'Schritt ' + schritt + ' von 2 · ' : '') + t; };
     (async () => {
       try {
         if (ruhe) ruhe.vor();
@@ -86,7 +98,15 @@ function messTeil(u, ruhe) {
           try { await koerperMessen(u, melde(1), { cpu: modus === 'cpu', beiBild: (bild, von) => lauf.setze({ ...marke, bild, von }) }); }
           catch (e) { u.koerper = { fehler: e.message }; u.bilder = []; await uebungSpeichern(u); }
           lauf.weg(); erkennungSchliessen();
-          if (mitTon) { melde(1)('Gebe Arbeitsspeicher frei …'); await luftHolen(2500); }
+          if (mitTon) {
+            // Beide Schritte zusammen sprengen den Arbeitsspeicher des iPhones. Deshalb lädt sich die Seite
+            // hier einmal neu und macht danach von selbst mit dem Transkript weiter.
+            lauf.setze({ id: u.id, phase: 'weiter' });
+            melde(1)('Körper fertig. Die Seite lädt kurz neu, um Arbeitsspeicher frei zu machen …');
+            await new Promise((r) => setTimeout(r, 700));
+            location.reload();
+            return;
+          }
         }
         if (mitTon) {
           lauf.setze({ id: u.id, phase: 'ton', modell: wahl });
@@ -115,6 +135,7 @@ function messTeil(u, ruhe) {
         h('p', { class: 'grau' }, 'Dauert etwa ' + min + (min === 1 ? ' Minute' : ' Minuten') + ' (Transkript: ' + mo.name + '). Die App dabei offen lassen. Beim ersten Mal lädt sie einmalig rund ' + mo.mb + ' MB, am besten im WLAN.'),
         stand,
         u.koerper ? koerperTeil(u) : null);
+      if (autoStart) { autoStart = false; starte(knopf, stand, 'ton'); }
       return;
     }
     const s = m.stimme, p = m.sprache;
@@ -156,6 +177,7 @@ function messTeil(u, ruhe) {
         u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
         h('div', { class: 'hinweis' }, 'Automatisch erstellt' + (m.modell ? ' (Transkript: ' + m.modell.replace('onnx-community/whisper-base', 'schnell') + ')' : '') + '. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
       nurKoerper, nurTon, nochmal, stand);
+    if (autoStart) { autoStart = false; starte(nochmal, stand, 'ton'); }
   }
   zeichne();
   return box;

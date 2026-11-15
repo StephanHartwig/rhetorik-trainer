@@ -16,6 +16,7 @@ export function absturzPruefen() {
   const r = lauf.lies();
   if (!r) return null;
   lauf.weg();
+  if (r.phase === 'weiter') return null;
   if (r.phase === 'koerper') {
     const wo = r.von ? ' (bei Bild ' + r.bild + ' von ' + r.von + ')' : ' (beim Laden der Erkennung)';
     if (r.modus === 'gpu') {
