@@ -1,17 +1,31 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=14';
-import { fmtZeit } from './store.js?v=14';
-import { alleUebungen, speicherStand } from './db.js?v=14';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=14';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=15';
+import { fmtZeit } from './store.js?v=15';
+import { alleUebungen, speicherStand } from './db.js?v=15';
+import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=15';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
 const kurz = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 
+// Aufklappbarer Bereich, der sich merkt, ob er offen war
+const K_OFFEN = 'rt.verlauf.offen';
+function offene() { try { return JSON.parse(localStorage.getItem(K_OFFEN)) || []; } catch (e) { return []; } }
+function klapp(name, klasse, kopfInhalt, ...inhalt) {
+  const d = h('details', { class: 'klapp ' + klasse }, h('summary', {}, kopfInhalt), inhalt);
+  if (offene().includes(name)) d.open = true;
+  d.addEventListener('toggle', () => {
+    const l = offene().filter((x) => x !== name);
+    if (d.open) l.push(name);
+    try { localStorage.setItem(K_OFFEN, JSON.stringify(l)); } catch (e) {}
+  });
+  return d;
+}
+
 // Eine Kurve je Messgröße: eine Linie, eine Achse. Antippen eines Punkts zeigt Wert und Datum.
 function kurve(titel, punkte, opt = {}) {
-  const kopfzeile = h('div', { class: 'titel' }, h('span', {}, titel));
-  if (punkte.length < 2) return h('div', { class: 'gruppe' }, kopfzeile, h('div', { class: 'hinweis' }, punkte.length ? 'Erst ein Wert (' + punkte[0].text + '). Die Kurve beginnt ab zwei Übungen.' : 'Noch keine Werte.'));
+  const name = h('span', {}, titel), wert = h('span', { class: 'wert' }, punkte.length ? punkte[punkte.length - 1].text : '–');
+  if (punkte.length < 2) return klapp(titel, 'gruppe', [name, wert], h('div', { class: 'hinweis' }, punkte.length ? 'Erst ein Wert (' + punkte[0].text + '). Die Kurve beginnt ab zwei Übungen.' : 'Noch keine Werte.'));
   punkte = punkte.slice(-30);
   const ys = punkte.map((p) => p.y), n = punkte.length;
   let lo = opt.min != null ? opt.min : Math.min(...ys), hi = opt.max != null ? opt.max : Math.max(...ys);
@@ -31,7 +45,6 @@ function kurve(titel, punkte, opt = {}) {
   const bild = h('div', { class: 'kurve' });
   bild.innerHTML = svg;
   const letzter = punkte[n - 1];
-  kopfzeile.append(h('span', { class: 'wert' }, letzter.text));
   const zeile = h('div', { class: 'hinweis' }, 'Zuletzt am ' + kurz(letzter.datum) + ': ' + letzter.text + ' · ' + n + ' Übungen · Punkt antippen zeigt den Wert');
   bild.addEventListener('click', (ev) => {
     const i = ev.target && ev.target.dataset ? ev.target.dataset.i : undefined;
@@ -40,7 +53,7 @@ function kurve(titel, punkte, opt = {}) {
     bild.querySelectorAll('.punkt').forEach((c, k) => c.classList.toggle('gewaehlt', k === Number(i)));
     zeile.textContent = datumText(p.datum) + ': ' + p.text + (p.aufgabe ? ' · ' + p.aufgabe : '');
   });
-  return h('div', { class: 'gruppe' }, kopfzeile, bild, opt.skala ? h('div', { class: 'skala' }, h('span', {}, opt.skala[0]), h('span', {}, opt.skala[1])) : null, zeile);
+  return klapp(titel, 'gruppe', [name, wert], bild, opt.skala ? h('div', { class: 'skala' }, h('span', {}, opt.skala[0]), h('span', {}, opt.skala[1])) : null, zeile);
 }
 
 export function verlaufSeite(app) {
@@ -63,12 +76,11 @@ export function verlaufSeite(app) {
         kurve('Tempo', reihe((u) => (u.messung ? u.messung.sprache.tempo : null), (u, y) => y + ' Wörter/Min.')),
         kurve('Zeitabweichung', reihe((u) => Math.round((u.ist - u.soll) / u.soll * 100), (u, y) => (y > 0 ? '+' : '') + y + ' %')),
         kurve('Blick zur Kamera', reihe((u) => (u.koerper && u.koerper.blick != null ? u.koerper.blick : null), (u, y) => y + ' %'), { min: 0, max: 100 }),
-        h('h2', {}, 'Übungen'),
       ] : null,
-      liste.length ? liste.map((u) => h('button', { class: 'eintrag', onclick: () => geheZu('#/uebung/' + u.id) },
+      liste.length ? klapp('Übungen', 'frei', [h('span', {}, 'Übungen'), h('span', { class: 'wert' }, String(liste.length))], liste.map((u) => h('button', { class: 'eintrag', onclick: () => geheZu('#/uebung/' + u.id) },
         h('div', { class: 'e1', lang: 'de' }, h('span', {}, u.aufgabe), u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null),
         h('div', { class: 'e2' }, [datumText(u.datum), MODUS[u.modus] || u.modus].join(' · ')),
-        h('div', { class: 'e2' }, u.status === 'fertig' ? 'Soll ' + fmtZeit(u.soll) + ' · Ist ' + fmtZeit(u.ist) + ' · ' + mb(u.groesse || 0) + (u.ergebnis ? '' : u.messung ? ' · noch nicht ausgewertet' : ' · noch nicht gemessen') : 'nicht sauber beendet')))
+        h('div', { class: 'e2' }, u.status === 'fertig' ? 'Soll ' + fmtZeit(u.soll) + ' · Ist ' + fmtZeit(u.ist) + ' · ' + mb(u.groesse || 0) + (u.ergebnis ? '' : u.messung ? ' · noch nicht ausgewertet' : ' · noch nicht gemessen') : 'nicht sauber beendet'))))
         : h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.')),
       liste.length ? h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '. Antippen öffnet eine Übung; dort kannst du sie ansehen, sichern oder löschen.') : null);
   })();

@@ -1,12 +1,12 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=14';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=14';
-import { redeAblauf } from './rede.js?v=14';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=14';
-import { verlaufSeite, startInfo } from './verlauf.js?v=14';
-import { eigeneBegriffe } from './begriffe.js?v=14';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=15';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=15';
+import { redeAblauf } from './rede.js?v=15';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=15';
+import { verlaufSeite, startInfo } from './verlauf.js?v=15';
+import { eigeneBegriffe } from './begriffe.js?v=15';
 
-const VERSION = 14;
+const VERSION = 15;
 const app = document.getElementById('app');
 let E = laden();
 const merke = (k, v) => { E[k] = v; E = speichern(E); };

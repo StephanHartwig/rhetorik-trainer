@@ -1,9 +1,9 @@
 // Ablauf Stegreifrede: Einrichten → Begriff + Vorbereitung → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=14';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=14';
-import { ziehe } from './begriffe.js?v=14';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=14';
-import * as G from './geraet.js?v=14';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=15';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=15';
+import { ziehe } from './begriffe.js?v=15';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=15';
+import * as G from './geraet.js?v=15';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
