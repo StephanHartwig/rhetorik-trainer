@@ -136,3 +136,9 @@ table.werte td:last-child { text-align: right; font-weight: 700; font-variant-nu
 details.gruppe summary { font-weight: 600; min-height: 32px; cursor: pointer; }
 .tzeile { margin: 8px 0; overflow-wrap: anywhere; }
 .tzeile .grau { font-variant-numeric: tabular-nums; }
+
+/* Einzelbilder */
+.bilder { display: flex; gap: 8px; overflow-x: auto; padding: 8px 0 2px; -webkit-overflow-scrolling: touch; }
+.bilder figure { margin: 0; flex: none; width: 38%; }
+.bilder img { width: 100%; border-radius: 10px; display: block; background: #000; }
+.bilder figcaption { font-size: 13px; color: var(--grau); margin-top: 4px; }

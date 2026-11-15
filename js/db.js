@@ -39,7 +39,12 @@ export async function pcmLaden(id) {
   if (!teile || !teile.length) return null;
   return new Int16Array(await new Blob(teile).arrayBuffer());
 }
+const bildBereich = (id) => IDBKeyRange.bound(id + '#b:', id + '#b:\uffff');
+export const bildSpeichern = (id, n, blob) => tx('stuecke', 'readwrite', (s) => s.put(blob, id + '#b:' + String(n).padStart(2, '0')));
+export const bilderLaden = (id) => tx('stuecke', 'readonly', (s) => s.getAll(bildBereich(id))).then((l) => l || []);
+export const bilderLoeschen = (id) => tx('stuecke', 'readwrite', (s) => s.delete(bildBereich(id)));
 export async function uebungLoeschen(id) {
+  await tx('stuecke', 'readwrite', (s) => s.delete(bildBereich(id)));
   await tx('stuecke', 'readwrite', (s) => s.delete(tonBereich(id)));
   await tx('stuecke', 'readwrite', (s) => s.delete(bereich(id)));
   await tx('uebungen', 'readwrite', (s) => s.delete(id));

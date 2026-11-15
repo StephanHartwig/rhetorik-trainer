@@ -1,11 +1,11 @@
 // Messung einer Übung: Ton laden, im Arbeits-Thread messen und transkribieren, Ergebnis speichern.
-import { pcmLaden, aufnahmeDatei, uebungSpeichern } from './db.js?v=8';
-import { sprachAnalyse } from './analyse.js?v=8';
+import { pcmLaden, aufnahmeDatei, uebungSpeichern } from './db.js?v=9';
+import { sprachAnalyse } from './analyse.js?v=9';
 
 // Zwei Transkript-Modelle: schnell oder genau. minJeMin = geschätzte Rechenzeit je Redeminute (iPhone 16 Pro).
 export const MODELLE = {
   mittel: { id: 'onnx-community/whisper-base', name: 'schnell', mb: 80, minJeMin: 0.6, stillMax: 90000 },
-  gross: { id: 'onnx-community/whisper-small', name: 'genau', mb: 250, minJeMin: 1.8, stillMax: 180000 },
+  gross: { id: 'onnx-community/whisper-small', name: 'genau', mb: 250, minJeMin: 1.0, stillMax: 180000 },
 };
 
 // Ton der Übung als 16.000 Werte je Sekunde. Bevorzugt die mitgeschnittene Tonspur, sonst aus der Aufnahme.
@@ -35,7 +35,7 @@ async function tonLaden(u) {
 
 function einLauf(audio, dauer, melde, modell) {
   return new Promise((ja, nein) => {
-    const w = new Worker('js/mess-worker.js?v=8', { type: 'module' });
+    const w = new Worker('js/mess-worker.js?v=9', { type: 'module' });
     let wache, stimme = null, geladen = false;
     const ende = (fn, wert) => { clearTimeout(wache); w.terminate(); fn(wert); };
     const stelleWache = () => { clearTimeout(wache); wache = setTimeout(() => ende(nein, Object.assign(new Error('haengt'), { haengt: true, geladen })), modell.stillMax); };

@@ -1,10 +1,11 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=8';
-import { fmtZeit, laden } from './store.js?v=8';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand } from './db.js?v=8';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=8';
-import { messen, MODELLE } from './messung.js?v=8';
-import { wachAn, wachAus } from './geraet.js?v=8';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=9';
+import { fmtZeit, laden } from './store.js?v=9';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=9';
+import { koerperMessen } from './koerper.js?v=9';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=9';
+import { messen, MODELLE } from './messung.js?v=9';
+import { wachAn, wachAus } from './geraet.js?v=9';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -15,6 +16,47 @@ export function abweichung(u) {
   return vz(d) + ' s (' + vz(p) + ' %)';
 }
 
+// ---------- Körper und Einzelbilder ----------
+function koerperTeil(u) {
+  const k = u.koerper;
+  const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
+  const titel = h('div', { class: 'titel' }, 'Körper', h('span', { class: 'grau' }, 'Schätzung'));
+  if (u.typ !== 'video') return h('div', { class: 'gruppe' }, titel, h('div', { class: 'hinweis' }, 'Bei reinen Tonaufnahmen gibt es keine Körpermessung.'));
+  if (!k) return h('div', { class: 'gruppe' }, titel, h('div', { class: 'hinweis' }, 'Noch nicht gemessen. „Messung wiederholen“ holt das nach.'));
+  if (k.fehler) return h('div', { class: 'gruppe' }, titel, h('div', { class: 'hinweis fehler' }, 'Die Körpermessung hat nicht geklappt: ' + k.fehler));
+  const nm = (x, einheit) => (x == null ? 'nicht messbar' : x + einheit);
+  const reihen = [];
+  if (k.modus === 'ganz') {
+    if (!k.standUnsicher) reihen.push(
+      zeile('Schwanken der Schultern', k.schwankenSchulter + ' % der Schulterbreite'),
+      zeile('Schwanken der Hüfte', k.schwankenHuefte + ' % der Schulterbreite'),
+      zeile('Standortwechsel', String(k.standortwechsel)),
+      zeile('Beide Hände sichtbar', k.haendeSichtbar + ' % der Zeit'),
+      zeile('Handbewegung', nm(k.handBewegung, '')));
+    reihen.push(zeile('Kopf zur Kamera', nm(k.blick, ' % der Zeit')));
+  } else {
+    reihen.push(zeile('Blick zur Kamera', nm(k.blick, ' % der Zeit')));
+    if (!k.mimikUnsicher) reihen.push(
+      zeile('Wechsel im Gesichtsausdruck', k.mimikWechsel + ' (' + String(k.mimikWechselJeMinute).replace('.', ',') + ' je Minute)'),
+      zeile('Lächeln', k.laecheln + ' % der Zeit'),
+      zeile('Bewegung im Gesicht', nm(k.mimikBewegung, '')));
+  }
+  const leiste = h('div', { class: 'bilder' });
+  if (u.bilder && u.bilder.length) bilderLaden(u.id).then((blobs) => {
+    blobs.forEach((b, i) => { if (!u.bilder[i]) return; const url = URL.createObjectURL(b);
+      leiste.append(h('figure', {}, h('img', { src: url, alt: 'Einzelbild', onload: () => URL.revokeObjectURL(url) }), h('figcaption', {}, fmtZeit(u.bilder[i].t) + ' · ' + u.bilder[i].grund))); });
+  });
+  return h('div', { class: 'gruppe' }, titel,
+    reihen.length ? h('table', { class: 'werte' }, reihen) : null,
+    (k.hinweise || []).map((t) => h('div', { class: 'hinweis' }, t)),
+    k.modus === 'ganz'
+      ? h('div', { class: 'hinweis' }, 'Handbewegung: 100 entspricht einer Schulterbreite je Sekunde. Der Blick wird aus der Entfernung über die Kopfhaltung geschätzt. Geprüft wurde alle ' + String(k.schritt).replace('.', ',') + ' Sekunden ein Bild.')
+      : h('div', { class: 'hinweis' }, 'Bewegung im Gesicht ist eine Kennzahl ohne Einheit: höher bedeutet mehr Wechsel in Stirn, Wangen und Mund. Geprüft wurde alle ' + String(k.schritt).replace('.', ',') + ' Sekunden ein Bild.'),
+    k.diag ? h('div', { class: 'hinweis' }, 'Prüfwert für die Feinabstimmung: Kopfhaltung ' + k.diag.yaw + '° / ' + k.diag.pitch + '°, erkannt in ' + k.erkannt + ' % der Bilder.') : null,
+    u.bilder && u.bilder.length ? h('div', { class: 'hinweis' }, 'Einzelbilder für die Auswertung (' + u.bilder.length + '):') : null,
+    leiste);
+}
+
 // ---------- Messwerte (Schätzungen des Geräts) ----------
 function messTeil(u) {
   const box = h('div', {});
@@ -22,15 +64,25 @@ function messTeil(u) {
   const zahl = (x, einheit = '') => (x == null ? 'nicht messbar' : String(x).replace('.', ',') + einheit);
   function starte(knopf, stand) {
     knopf.disabled = true; stand.className = 'hinweis'; wachAn();
-    messen(u, (t) => { stand.textContent = t; }, laden().transkript).then(zeichne)
-      .catch((e) => { stand.className = 'hinweis fehler'; stand.textContent = 'Die Messung hat nicht geklappt: ' + e.message; knopf.disabled = false; })
-      .finally(wachAus);
+    const video = u.typ === 'video';
+    const melde = (schritt) => (t) => { stand.textContent = (video ? 'Schritt ' + schritt + ' von 2 · ' : '') + t; };
+    (async () => {
+      try {
+        await messen(u, melde(1), laden().transkript);
+        if (video) {
+          try { await koerperMessen(u, melde(2)); }
+          catch (e) { u.koerper = { fehler: e.message }; u.bilder = []; await uebungSpeichern(u); }
+        }
+        zeichne();
+      } catch (e) { stand.className = 'hinweis fehler'; stand.textContent = 'Die Messung hat nicht geklappt: ' + e.message; knopf.disabled = false; }
+      wachAus();
+    })();
   }
   function zeichne() {
     const m = u.messung, stand = h('div', { class: 'hinweis' });
     if (!m) {
       const mo = MODELLE[laden().transkript] || MODELLE.mittel;
-      const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * mo.minJeMin + 0.3));
+      const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * (mo.minJeMin + (u.typ === 'video' ? 0.35 : 0)) + 0.3));
       const knopf = h('button', { class: 'breit blau', onclick: () => starte(knopf, stand) }, 'Messwerte berechnen');
       fuelle(box, knopf,
         h('p', { class: 'grau' }, 'Dauert etwa ' + min + (min === 1 ? ' Minute' : ' Minuten') + ' (Transkript: ' + mo.name + '). Die App dabei offen lassen. Beim ersten Mal lädt sie einmalig rund ' + mo.mb + ' MB, am besten im WLAN.'),
@@ -67,6 +119,7 @@ function messTeil(u) {
           zeile('Tonhöhe (Mitte)', zahl(s.tonhoehe, ' Hz')),
           zeile('Schwankung der Tonhöhe', zahl(s.tonSchwankung, ' Halbtöne'))),
         h('div', { class: 'hinweis' }, 'Größere Schwankung bedeutet mehr Wechsel in der Stimme. Vergleiche die Werte mit deinen eigenen früheren Reden.')),
+      koerperTeil(u),
       h('details', { class: 'gruppe' }, h('summary', {}, 'Transkript anzeigen'),
         u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
         h('div', { class: 'hinweis' }, 'Automatisch erstellt' + (m.modell ? ' (Transkript: ' + m.modell.replace('onnx-community/whisper-base', 'schnell') + ')' : '') + '. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
@@ -104,7 +157,7 @@ export function uebungSeite(app, id) {
       spieler, sichern,
       h('p', { class: 'grau' }, u.typ === 'ton' ? 'Im Teilen-Menü „In Dateien sichern“ wählen.' : 'Im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
       info,
-      h('p', { class: 'grau' }, 'Körpermessung und „Auswerten lassen“ kommen mit den nächsten Blöcken.'),
+      h('p', { class: 'grau' }, '„Auswerten lassen“ kommt mit Block 6.'),
       h('button', { class: 'breit', onclick: () => geheZu('#/') }, 'Zum Start'),
       h('button', { class: 'breit leise', onclick: async () => {
         if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;

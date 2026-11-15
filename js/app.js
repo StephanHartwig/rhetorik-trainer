@@ -1,11 +1,11 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=8';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=8';
-import { redeAblauf } from './rede.js?v=8';
-import { uebungSeite, verlaufSeite, eigeneSeite } from './seiten.js?v=8';
-import { eigeneBegriffe } from './begriffe.js?v=8';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=9';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=9';
+import { redeAblauf } from './rede.js?v=9';
+import { uebungSeite, verlaufSeite, eigeneSeite } from './seiten.js?v=9';
+import { eigeneBegriffe } from './begriffe.js?v=9';
 
-const VERSION = 8;
+const VERSION = 9;
 const app = document.getElementById('app');
 let E = laden();
 const merke = (k, v) => { E[k] = v; E = speichern(E); };
@@ -103,7 +103,7 @@ function einstellungen() {
       h('div', { class: 'hinweis' }, 'Klassisch: Einstieg, drei Argumente, Wiederholung, Aufforderung, Schluss. Frei: eigener Aufbau, der Coach wertet das nicht ab.')),
     gruppe('Anteil Fachbegriffe', fach.anzeige, fach.zeile),
     gruppe('Transkript', null, transChips.el,
-      h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht aber etwa dreimal so lange und lädt einmalig rund 250 MB.')),
+      h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht etwa 5 Minuten und lädt einmalig rund 250 MB.')),
     h('button', { class: 'breit', onclick: () => geheZu('#/eigene') }, 'Eigene Begriffe (' + eigeneBegriffe().length + ')'),
     h('button', { class: 'breit', onclick: () => {
       if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { E = speichern({ ...STANDARD }); zeigen(); }

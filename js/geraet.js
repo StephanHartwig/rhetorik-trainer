@@ -1,5 +1,5 @@
 // Gerätefunktionen: Kamera, Ton (Signal, Pegel), Bildschirm an, Aufnahme
-import { stueckSpeichern, pcmSpeichern } from './db.js?v=8';
+import { stueckSpeichern, pcmSpeichern } from './db.js?v=9';
 
 // ---------- Kamera und Mikrofon ----------
 let stream;
@@ -128,7 +128,7 @@ export function aufnahmeStarten(s, id, nurTon) {
 let wlModul;
 export function pcmVorbereiten() {
   if (!ctx || !ctx.audioWorklet) return Promise.reject(new Error('kein AudioWorklet'));
-  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=8').catch((e) => { wlModul = null; throw e; }));
+  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=9').catch((e) => { wlModul = null; throw e; }));
 }
 export async function pcmStarten(s, id) {
   await pcmVorbereiten();
@@ -169,6 +169,17 @@ export function poseLaden() {
     const mk = (delegate) => m.PoseLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: POSE, delegate }, runningMode: 'IMAGE', numPoses: 1 });
     try { return await mk('GPU'); } catch (e) { return await mk('CPU'); }
   })().catch((e) => { poseP = null; throw e; }));
+}
+const GESICHT = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
+let gesichtP;
+export function gesichtLaden() {
+  return gesichtP || (gesichtP = (async () => {
+    const m = await import(MP + '/vision_bundle.mjs');
+    const fs = await m.FilesetResolver.forVisionTasks(MP + '/wasm');
+    const mk = (delegate) => m.FaceLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: GESICHT, delegate }, runningMode: 'IMAGE', numFaces: 1,
+      outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true });
+    try { return await mk('GPU'); } catch (e) { return await mk('CPU'); }
+  })().catch((e) => { gesichtP = null; throw e; }));
 }
 // Prüft ein Kamerabild. Ergebnis: true = beide Hände über dem Kopf, false = nicht, null = niemand erkannt.
 export function haendeOben(pose, video, leinwand) {
