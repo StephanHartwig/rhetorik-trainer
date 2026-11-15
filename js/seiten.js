@@ -1,12 +1,12 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=10';
-import { fmtZeit, laden } from './store.js?v=10';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=10';
-import { koerperMessen } from './koerper.js?v=10';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=10';
-import { messen, MODELLE } from './messung.js?v=10';
-import { wachAn, wachAus, erkennungSchliessen } from './geraet.js?v=10';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=10';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=11';
+import { fmtZeit, laden } from './store.js?v=11';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=11';
+import { koerperMessen } from './koerper.js?v=11';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=11';
+import { messen, MODELLE, luftHolen } from './messung.js?v=11';
+import { wachAn, wachAus, erkennungSchliessen } from './geraet.js?v=11';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=11';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -66,14 +66,15 @@ function koerperTeil(u) {
 function messTeil(u, ruhe) {
   const box = h('div', {});
   const absturz = absturzPruefen();
+  let fehlerText = '';
   const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
   const zahl = (x, einheit = '') => (x == null ? 'nicht messbar' : String(x).replace('.', ',') + einheit);
   // neu = true: alles neu messen. Sonst nur, was noch fehlt.
   function starte(knopf, stand, neu) {
     knopf.disabled = true; stand.className = 'hinweis'; wachAn();
     const modus = koerperModus(), wahl = laden().transkript;
-    const mitKoerper = u.typ === 'video' && modus !== 'aus' && (neu || !u.koerper || u.koerper.fehler);
-    const mitTon = neu || !u.messung;
+    const mitKoerper = neu !== 'ton' && u.typ === 'video' && modus !== 'aus' && (neu || !u.koerper || u.koerper.fehler);
+    const mitTon = !!neu || !u.messung;
     const melde = (schritt) => (t) => { stand.textContent = (mitKoerper && mitTon ? 'Schritt ' + schritt + ' von 2 · ' : '') + t; };
     (async () => {
       try {
@@ -85,7 +86,7 @@ function messTeil(u, ruhe) {
           try { await koerperMessen(u, melde(1), { cpu: modus === 'cpu', beiBild: (bild, von) => lauf.setze({ ...marke, bild, von }) }); }
           catch (e) { u.koerper = { fehler: e.message }; u.bilder = []; await uebungSpeichern(u); }
           lauf.weg(); erkennungSchliessen();
-          await new Promise((r) => setTimeout(r, 800));
+          if (mitTon) { melde(1)('Gebe Arbeitsspeicher frei …'); await luftHolen(2500); }
         }
         if (mitTon) {
           lauf.setze({ id: u.id, phase: 'ton', modell: wahl });
@@ -96,14 +97,16 @@ function messTeil(u, ruhe) {
         zeichne();
       } catch (e) {
         lauf.weg(); if (ruhe) ruhe.nach();
-        stand.className = 'hinweis fehler'; stand.textContent = 'Die Messung hat nicht geklappt: ' + e.message; knopf.disabled = false;
+        // Was schon gemessen ist, zeigen; die Fehlermeldung bleibt darüber stehen
+        fehlerText = 'Die Messung hat nicht geklappt: ' + e.message; zeichne();
       }
       wachAus();
     })();
   }
   function zeichne() {
     const m = u.messung, stand = h('div', { class: 'hinweis' });
-    const warnung = absturz && absturz.id === u.id ? h('p', { class: 'warn' }, absturz.text) : null;
+    const warnung = [absturz && absturz.id === u.id ? h('p', { class: 'warn' }, absturz.text) : null, fehlerText ? h('p', { class: 'hinweis fehler' }, fehlerText) : null];
+    fehlerText = '';
     if (!m) {
       const mo = MODELLE[laden().transkript] || MODELLE.mittel;
       const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * (mo.minJeMin + (u.typ === 'video' ? 0.35 : 0)) + 0.3));
@@ -120,7 +123,9 @@ function messTeil(u, ruhe) {
     const nochmal = h('button', { class: 'breit leise', onclick: () => starte(nochmal, stand, true) }, 'Messung wiederholen');
     const nurKoerper = u.typ === 'video' && koerperModus() !== 'aus' && (!u.koerper || u.koerper.fehler)
       ? h('button', { class: 'breit blau', onclick: () => starte(nurKoerper, stand, false) }, 'Körper nachmessen') : null;
+    const nurTon = m.ersatz ? h('button', { class: 'breit', onclick: () => starte(nurTon, stand, 'ton') }, 'Transkript noch einmal genau versuchen') : null;
     fuelle(box, warnung,
+      m.ersatz ? h('p', { class: 'warn' }, 'Für das genaue Transkript war zu wenig Arbeitsspeicher frei. Dieses Transkript ist mit „schnell“ erstellt. Tipp: App ganz schließen, neu öffnen und unten „Transkript noch einmal genau versuchen“ antippen.') : null,
       h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Sprache', h('span', { class: 'grau' }, 'Schätzung')),
         h('table', { class: 'werte' },
           zeile('Wörter', String(p.woerter)),
@@ -150,7 +155,7 @@ function messTeil(u, ruhe) {
       h('details', { class: 'gruppe' }, h('summary', {}, 'Transkript anzeigen'),
         u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
         h('div', { class: 'hinweis' }, 'Automatisch erstellt' + (m.modell ? ' (Transkript: ' + m.modell.replace('onnx-community/whisper-base', 'schnell') + ')' : '') + '. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
-      nurKoerper, nochmal, stand);
+      nurKoerper, nurTon, nochmal, stand);
   }
   zeichne();
   return box;
