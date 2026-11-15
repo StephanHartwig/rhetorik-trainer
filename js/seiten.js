@@ -1,12 +1,13 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=12';
-import { fmtZeit, laden } from './store.js?v=12';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=12';
-import { koerperMessen } from './koerper.js?v=12';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=12';
-import { messen, MODELLE } from './messung.js?v=12';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=12';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=12';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=13';
+import { fmtZeit, laden } from './store.js?v=13';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=13';
+import { koerperMessen } from './koerper.js?v=13';
+import { coachTeil } from './coach.js?v=13';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=13';
+import { messen, MODELLE } from './messung.js?v=13';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=13';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=13';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -216,7 +217,7 @@ export function uebungSeite(app, id) {
       spieler, sichern,
       h('p', { class: 'grau' }, u.typ === 'ton' ? 'Im Teilen-Menü „In Dateien sichern“ wählen.' : 'Im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
       info,
-      h('p', { class: 'grau' }, '„Auswerten lassen“ kommt mit Block 6.'),
+      u.status === 'fertig' ? coachTeil(u) : null,
       h('button', { class: 'breit', onclick: () => geheZu('#/') }, 'Zum Start'),
       h('button', { class: 'breit leise', onclick: async () => {
         if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;
@@ -238,27 +239,6 @@ export function uebungSeite(app, id) {
     };
   })();
   return () => { aktiv = false; if (url) URL.revokeObjectURL(url); };
-}
-
-// ---------- Verlauf (Liste; Noten und Kurven kommen mit Block 6) ----------
-export function verlaufSeite(app) {
-  let aktiv = true;
-  fuelle(app, kopf('Verlauf'), h('p', { class: 'grau' }, 'Lade …'));
-  (async () => {
-    const [liste, st] = await Promise.all([alleUebungen(), speicherStand()]);
-    if (!aktiv) return;
-    const summe = liste.reduce((s, u) => s + (u.groesse || 0), 0);
-    fuelle(app, 
-      kopf('Verlauf'),
-      h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '')),
-      liste.length ? liste.map((u) => h('button', { class: 'eintrag', onclick: () => geheZu('#/uebung/' + u.id) },
-        h('div', { class: 'e1', lang: 'de' }, u.aufgabe),
-        h('div', { class: 'e2' }, [datumText(u.datum), MODUS[u.modus] || u.modus].join(' · ')),
-        h('div', { class: 'e2' }, u.status === 'fertig' ? 'Soll ' + fmtZeit(u.soll) + ' · Ist ' + fmtZeit(u.ist) + ' · ' + mb(u.groesse || 0) : 'nicht sauber beendet')))
-        : h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.')),
-      liste.length ? h('p', { class: 'grau' }, 'Antippen öffnet die Übung. Dort kannst du sie ansehen, sichern oder löschen. Noten und Kurven kommen mit Block 6.') : null);
-  })();
-  return () => { aktiv = false; };
 }
 
 // ---------- Eigene Begriffe ----------

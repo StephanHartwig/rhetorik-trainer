@@ -1,11 +1,12 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=12';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=12';
-import { redeAblauf } from './rede.js?v=12';
-import { uebungSeite, verlaufSeite, eigeneSeite } from './seiten.js?v=12';
-import { eigeneBegriffe } from './begriffe.js?v=12';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=13';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=13';
+import { redeAblauf } from './rede.js?v=13';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=13';
+import { verlaufSeite, startInfo } from './verlauf.js?v=13';
+import { eigeneBegriffe } from './begriffe.js?v=13';
 
-const VERSION = 12;
+const VERSION = 13;
 const app = document.getElementById('app');
 let E = laden();
 const merke = (k, v) => { E[k] = v; E = speichern(E); };
@@ -23,10 +24,13 @@ function updateKnopf() {
 
 // ---------- Startbildschirm ----------
 function start() {
+  const info = h('div', { class: 'startInfo' });
+  startInfo(info);
   return [
     kopf('Rhetorik-Trainer', { zurueck: false, rechts: h('button', { class: 'rad', 'aria-label': 'Einstellungen', onclick: () => geheZu('#/einstellungen') }, '⚙︎') }),
     updateKnopf(),
     h('button', { class: 'gross', onclick: () => geheZu('#/bald/heute') }, 'Heute üben', h('small', {}, '2 Aufgaben · die Reihenfolge überrascht dich')),
+    info,
     h('h2', {}, 'Freies Üben'),
     h('div', { class: 'raster' },
       h('button', { class: 'kachel', onclick: () => geheZu('#/rede') }, 'Stegreifrede'),

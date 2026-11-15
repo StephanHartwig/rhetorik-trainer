@@ -142,3 +142,25 @@ details.gruppe summary { font-weight: 600; min-height: 32px; cursor: pointer; }
 .bilder figure { margin: 0; flex: none; width: 38%; }
 .bilder img { width: 100%; border-radius: 10px; display: block; background: #000; }
 .bilder figcaption { font-size: 13px; color: var(--grau); margin-top: 4px; }
+
+/* Auswertung, Bewertung, Verlauf */
+.zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.zwei .breit { font-size: 16px; padding: 10px 8px; }
+textarea.einfuegen { width: 100%; border-radius: 14px; border: 1px solid var(--linie); background: var(--bg); color: var(--tx); font: inherit; font-size: 15px; padding: 10px; margin-top: 12px; }
+.aufgabe { background: var(--bg); border: 1px solid var(--linie); border-radius: 14px; padding: 12px 14px; margin-top: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.aufgabe .grau { font-weight: 400; margin-bottom: 2px; }
+.feedback { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; margin-top: 8px; }
+.gruppe details { margin-top: 12px; }
+.gruppe details summary { font-weight: 600; cursor: pointer; }
+.startInfo { margin-top: 14px; }
+.startInfo:empty { display: none; }
+.serie { font-weight: 700; text-align: center; }
+.kurve svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+.kurve .gitter { stroke: var(--linie); stroke-width: 1; }
+.kurve .linie { fill: none; stroke: var(--blau); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.kurve .punkt { fill: var(--blau); stroke: var(--karte); stroke-width: 2; }
+.kurve .punkt.letzter, .kurve .punkt.gewaehlt { fill: #fff; stroke: var(--blau); }
+.kurve .tipp { fill: transparent; }
+.skala { display: flex; justify-content: space-between; font-size: 13px; color: var(--grau); }
+.eintrag .e1 { display: flex; justify-content: space-between; gap: 10px; }
+.eintrag .note { color: var(--blau); white-space: nowrap; }
