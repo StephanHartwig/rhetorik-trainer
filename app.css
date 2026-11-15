@@ -220,3 +220,14 @@ details.klapp.gruppe > summary ~ * { margin-top: 8px; }
 .artZeile b { display: block; font-size: 6.5vw; color: var(--gelb); }
 .ganz .artZeile { font-size: 6vw; }
 .ganz .artZeile b { font-size: 8vw; }
+
+/* Verlauf: Papierkorb je Übung und Sammellöschen */
+.eZeile { display: flex; align-items: stretch; gap: 8px; }
+.eZeile .eintrag { flex: 1; min-width: 0; }
+.muell { flex: none; width: 56px; margin: 6px 0; border-radius: 16px; background: var(--karte); border: 1px solid var(--linie); font-size: 22px; }
+.eintrag.wahl { display: flex; align-items: center; gap: 14px; }
+.eintrag.wahl .eInhalt { flex: 1; min-width: 0; }
+.eintrag.wahl .haken { flex: none; width: 30px; height: 30px; border-radius: 9px; border: 2px solid var(--grau); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; }
+.eintrag.wahl.an { border-color: var(--rot); }
+.eintrag.wahl.an .haken { background: var(--rot); border-color: var(--rot); }
+.wahlLeiste { margin: 8px 0; }

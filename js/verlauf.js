@@ -1,9 +1,9 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2003';
-import { fmtZeit } from './store.js?v=2003';
-import { alleUebungen, speicherStand } from './db.js?v=2003';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2003';
-import { entwirren } from './auto.js?v=2003';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2004';
+import { fmtZeit } from './store.js?v=2004';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2004';
+import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2004';
+import { entwirren } from './auto.js?v=2004';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -60,7 +60,8 @@ function kurve(titel, punkte, opt = {}) {
 export function verlaufSeite(app) {
   let aktiv = true;
   fuelle(app, kopf('Verlauf'), h('p', { class: 'grau' }, 'Lade …'));
-  (async () => {
+  let auswahl = null;                 // null = normale Liste, sonst die Menge der angekreuzten Übungen
+  async function lade() {
     const [liste, st] = await Promise.all([alleUebungen(), speicherStand()]);
     if (!aktiv) return;
     const fertig = liste.filter((u) => u.status === 'fertig').reverse();          // älteste zuerst
@@ -78,13 +79,50 @@ export function verlaufSeite(app) {
         kurve('Zeitabweichung', reihe((u) => Math.round((u.ist - u.soll) / u.soll * 100), (u, y) => (y > 0 ? '+' : '') + y + ' %')),
         kurve('Blick zur Kamera', reihe((u) => (u.koerper && u.koerper.blick != null ? u.koerper.blick : null), (u, y) => y + ' %'), { min: 0, max: 100 }),
       ] : null,
-      liste.length ? klapp('Übungen', 'frei', [h('span', {}, 'Übungen'), h('span', { class: 'wert' }, String(liste.length))], liste.map((u) => h('button', { class: 'eintrag', onclick: () => geheZu('#/uebung/' + u.id) },
-        h('div', { class: 'e1', lang: 'de' }, h('span', {}, u.aufgabe), u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null),
-        h('div', { class: 'e2' }, [datumText(u.datum), MODUS[u.modus] || u.modus].join(' · ')),
-        h('div', { class: 'e2' }, u.status === 'fertig' ? 'Soll ' + fmtZeit(u.soll) + ' · Ist ' + fmtZeit(u.ist) + ' · ' + mb(u.groesse || 0) + (u.ergebnis ? '' : u.messung ? ' · noch nicht ausgewertet' : ' · noch nicht gemessen') : 'nicht sauber beendet'))))
+      liste.length ? klapp('Übungen', 'frei', [h('span', {}, 'Übungen'), h('span', { class: 'wert' }, String(liste.length))], uebungsListe(liste))
         : h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.')),
-      liste.length ? h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '. Antippen öffnet eine Übung; dort kannst du sie ansehen, sichern oder löschen.') : null);
-  })();
+      liste.length ? h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '. Antippen öffnet eine Übung. Der Papierkorb löscht eine einzelne Übung, „Mehrere auswählen“ löscht mehrere auf einmal.') : null);
+
+    // Liste der Übungen: einzeln löschen per Papierkorb oder mehrere ankreuzen und zusammen löschen
+    function uebungsListe(liste) {
+      const loesche = async (ids, frage) => {
+        if (!confirm(frage)) return;
+        for (const id of ids) { try { await uebungLoeschen(id); } catch (e) {} }
+        auswahl = null;
+        if (aktiv) lade();
+      };
+      const leiste = h('div', { class: 'wahlLeiste' });
+      const zeilen = h('div', {});
+      function zeichne() {
+        const n = auswahl ? auswahl.size : 0;
+        fuelle(leiste, !auswahl
+          ? h('button', { class: 'breit', onclick: () => { auswahl = new Set(); zeichne(); } }, 'Mehrere auswählen')
+          : [
+            h('div', { class: 'hinweis' }, 'Tippe die Übungen an, die du löschen willst.'),
+            h('div', { class: 'zwei' },
+              h('button', { class: 'breit', onclick: () => { auswahl = n === liste.length ? new Set() : new Set(liste.map((u) => u.id)); zeichne(); } }, n === liste.length ? 'Keine auswählen' : 'Alle auswählen'),
+              h('button', { class: 'breit', onclick: () => { auswahl = null; zeichne(); } }, 'Abbrechen')),
+            h('button', { class: 'breit rot', disabled: !n, onclick: () => loesche([...auswahl], n === 1 ? 'Diese Übung mit Aufnahme endgültig löschen?' : n + ' Übungen mit Aufnahmen endgültig löschen?') }, n ? '🗑 ' + n + (n === 1 ? ' Übung löschen' : ' Übungen löschen') : '🗑 Löschen'),
+          ]);
+        fuelle(zeilen, liste.map((u) => {
+          const an = auswahl && auswahl.has(u.id);
+          const inhalt = [
+            h('div', { class: 'e1', lang: 'de' }, h('span', {}, u.aufgabe), u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null),
+            h('div', { class: 'e2' }, [datumText(u.datum), MODUS[u.modus] || u.modus].join(' · ')),
+            h('div', { class: 'e2' }, u.status === 'fertig' ? 'Soll ' + fmtZeit(u.soll) + ' · Ist ' + fmtZeit(u.ist) + ' · ' + mb(u.groesse || 0) + (u.ergebnis ? '' : u.messung ? ' · noch nicht ausgewertet' : ' · noch nicht gemessen') : 'nicht sauber beendet'),
+          ];
+          if (auswahl) return h('button', { class: 'eintrag wahl' + (an ? ' an' : ''), 'aria-pressed': String(!!an), onclick: () => { if (an) auswahl.delete(u.id); else auswahl.add(u.id); zeichne(); } },
+            h('span', { class: 'haken' }, an ? '✓' : ''), h('div', { class: 'eInhalt' }, inhalt));
+          return h('div', { class: 'eZeile' },
+            h('button', { class: 'eintrag', onclick: () => geheZu('#/uebung/' + u.id) }, inhalt),
+            h('button', { class: 'muell', 'aria-label': 'Übung löschen', onclick: () => loesche([u.id], '„' + u.aufgabe + '“ vom ' + datumText(u.datum) + ' mit Aufnahme endgültig löschen?') }, '🗑'));
+        }));
+      }
+      zeichne();
+      return [leiste, zeilen];
+    }
+  }
+  lade();
   return () => { aktiv = false; };
 }
 

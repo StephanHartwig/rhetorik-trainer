@@ -1,14 +1,14 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2003';
-import { fmtZeit, laden } from './store.js?v=2003';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2003';
-import { koerperMessen } from './koerper.js?v=2003';
-import { coachTeil } from './coach.js?v=2003';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2003';
-import * as I from './impulse.js?v=2003';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2003';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2003';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2003';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2004';
+import { fmtZeit, laden } from './store.js?v=2004';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2004';
+import { koerperMessen } from './koerper.js?v=2004';
+import { coachTeil } from './coach.js?v=2004';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2004';
+import * as I from './impulse.js?v=2004';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2004';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2004';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2004';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -228,8 +228,12 @@ export function uebungSeite(app, id) {
       coach = coachTeil(u); coach.classList.add('coachBox');
       bereich.append(mess, coach); ordne();
     }
+    const loeschen = async () => {
+      if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;
+      await uebungLoeschen(u.id); geheZu('#/verlauf');
+    };
     fuelle(app, 
-      kopf('Ergebnis'),
+      kopf('Ergebnis', { rechts: h('button', { class: 'rad', 'aria-label': 'Übung löschen', onclick: loeschen }, '🗑') }),
       h('div', { class: 'begriffTitel', lang: 'de' }, u.aufgabe),
       h('p', { class: 'grau' }, [(MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''), u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', u.aufbau ? 'Aufbau ' + u.aufbau : null, datumText(u.datum)].filter(Boolean).join(' · ')),
       u.status !== 'fertig' ? h('p', { class: 'warn' }, 'Diese Aufnahme wurde nicht sauber beendet. Die Zeiten fehlen deshalb.') : null,
@@ -246,10 +250,7 @@ export function uebungSeite(app, id) {
         h('p', { class: 'grau' }, u.typ === 'ton' ? 'Im Teilen-Menü „In Dateien sichern“ wählen.' : 'Im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
         info),
       h('button', { class: 'breit', onclick: () => geheZu('#/') }, 'Zum Start'),
-      h('button', { class: 'breit leise', onclick: async () => {
-        if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;
-        await uebungLoeschen(u.id); geheZu('#/verlauf');
-      } }, 'Übung und Aufnahme löschen'));
+      h('button', { class: 'breit leise', onclick: loeschen }, '🗑 Übung und Aufnahme löschen'));
     const datei = await aufnahmeDatei(u);
     if (!aktiv) return;
     if (!datei) { spieler.remove(); sichern.remove(); info.textContent = 'Zu dieser Übung ist keine Aufnahme gespeichert.'; return; }
