@@ -1,14 +1,14 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=2001';
-import { fmtZeit, laden } from './store.js?v=2001';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2001';
-import { koerperMessen } from './koerper.js?v=2001';
-import { coachTeil } from './coach.js?v=2001';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2001';
-import * as I from './impulse.js?v=2001';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2001';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2001';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2001';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2002';
+import { fmtZeit, laden } from './store.js?v=2002';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=2002';
+import { koerperMessen } from './koerper.js?v=2002';
+import { coachTeil } from './coach.js?v=2002';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2002';
+import * as I from './impulse.js?v=2002';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2002';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2002';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2002';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -23,14 +23,14 @@ export function abweichung(u) {
 function koerperTeil(u) {
   const k = u.koerper;
   const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
-  const titel = h('div', { class: 'titel' }, 'Körper', h('span', { class: 'grau' }, 'Schätzung'));
-  if (u.typ !== 'video') return h('div', { class: 'gruppe' }, titel, h('div', { class: 'hinweis' }, 'Bei reinen Tonaufnahmen gibt es keine Körpermessung.'));
+  const kasten = (...inhalt) => klappe('koerper', 'Körper', u.typ !== 'video' ? '' : k && k.fehler ? 'nicht geklappt' : !k ? (koerperModus() === 'aus' ? 'ausgeschaltet' : 'noch nicht gemessen') : k.blick != null ? 'Blick ' + k.blick + ' %' : '', inhalt);
+  if (u.typ !== 'video') return kasten( h('div', { class: 'hinweis' }, 'Bei reinen Tonaufnahmen gibt es keine Körpermessung.'));
   if (!k && koerperModus() === 'aus') {
     const an = h('button', { class: 'breit', onclick: () => { setzeKoerperModus('cpu'); location.reload(); } }, 'Körpermessung wieder einschalten');
-    return h('div', { class: 'gruppe' }, titel, h('div', { class: 'hinweis' }, 'Die Körpermessung ist ausgeschaltet, weil sie auf diesem iPhone zweimal unterbrochen wurde.'), an);
+    return kasten( h('div', { class: 'hinweis' }, 'Die Körpermessung ist ausgeschaltet, weil sie auf diesem iPhone zweimal unterbrochen wurde.'), an);
   }
-  if (!k) return h('div', { class: 'gruppe' }, titel, h('div', { class: 'hinweis' }, 'Noch nicht gemessen. „Körper nachmessen“ holt das nach.'));
-  if (k.fehler) return h('div', { class: 'gruppe' }, titel, h('div', { class: 'hinweis fehler' }, 'Die Körpermessung hat nicht geklappt: ' + k.fehler));
+  if (!k) return kasten( h('div', { class: 'hinweis' }, 'Noch nicht gemessen. „Körper nachmessen“ holt das nach.'));
+  if (k.fehler) return kasten( h('div', { class: 'hinweis fehler' }, 'Die Körpermessung hat nicht geklappt: ' + k.fehler));
   const nm = (x, einheit) => (x == null ? 'nicht messbar' : x + einheit);
   const reihen = [];
   if (k.modus === 'ganz') {
@@ -53,7 +53,7 @@ function koerperTeil(u) {
     blobs.forEach((b, i) => { if (!u.bilder[i]) return; const url = URL.createObjectURL(b);
       leiste.append(h('figure', {}, h('img', { src: url, alt: 'Einzelbild', onload: () => URL.revokeObjectURL(url) }), h('figcaption', {}, fmtZeit(u.bilder[i].t) + ' · ' + u.bilder[i].grund))); });
   });
-  return h('div', { class: 'gruppe' }, titel,
+  return kasten(
     reihen.length ? h('table', { class: 'werte' }, reihen) : null,
     (k.hinweise || []).map((t) => h('div', { class: 'hinweis' }, t)),
     k.modus === 'ganz'
@@ -65,7 +65,7 @@ function koerperTeil(u) {
 }
 
 // ---------- Messwerte (Schätzungen des Geräts) ----------
-function messTeil(u, ruhe) {
+function messTeil(u, ruhe, nachMessung) {
   const box = h('div', {});
   // Nach dem Körper-Schritt hat sich die Seite neu geladen: jetzt geht es mit dem Transkript weiter.
   const rest = lauf.lies();
@@ -74,13 +74,14 @@ function messTeil(u, ruhe) {
   const absturz = weiter ? null : absturzPruefen();
   let fehlerText = '', autoStart = weiter && rest.id === u.id;
   // Stürzt die App beim Transkript ab, lädt das iPhone die Seite neu. Dann geht es hier von selbst weiter:
-  // zweiter Versuch mit demselben Modell (der Speicher ist jetzt frei), dritter mit dem schnellen.
+  // Beim genauen Modell gleich mit dem schnellen (ein zweiter Absturz in Folge bringt die Fehlerseite von iOS).
+  // Beim schnellen Modell ein zweiter und dritter Versuch mit demselben Modell.
   let tonVersuch = 1, tonErsatz = false, autoText = '';
   if (absturz && absturz.id === u.id && absturz.phase === 'ton' && absturz.alter < 240000 && absturz.versuch < 3) {
     tonVersuch = absturz.versuch + 1;
-    tonErsatz = tonVersuch === 3 && absturz.modell === 'gross';
+    tonErsatz = absturz.modell === 'gross';
     autoStart = true;
-    autoText = tonErsatz ? 'Das genaue Transkript wurde zweimal unterbrochen. Die App macht von selbst mit dem schnellen Transkript weiter.'
+    autoText = tonErsatz ? 'Das genaue Transkript wurde unterbrochen, vermutlich war zu wenig Arbeitsspeicher frei. Die App macht von selbst mit dem schnellen Transkript weiter.'
       : 'Die App wurde beim Transkript unterbrochen und macht von selbst weiter (Versuch ' + tonVersuch + ' von 3).';
   }
   const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
@@ -139,6 +140,7 @@ function messTeil(u, ruhe) {
     })();
   }
   function zeichne() {
+    if (nachMessung) nachMessung();
     const m = u.messung, stand = h('div', { class: 'hinweis' });
     const warnung = [autoText ? h('p', { class: 'warn' }, autoText) : absturz && absturz.id === u.id ? h('p', { class: 'warn' }, absturz.text) : null, fehlerText ? h('p', { class: 'hinweis fehler' }, fehlerText) : null];
     fehlerText = '';
@@ -162,7 +164,9 @@ function messTeil(u, ruhe) {
     const nurTon = m.ersatz ? h('button', { class: 'breit', onclick: () => starte(nurTon, stand, 'ton') }, 'Transkript noch einmal genau versuchen') : null;
     fuelle(box, warnung,
       m.ersatz ? h('p', { class: 'warn' }, 'Für das genaue Transkript war zu wenig Arbeitsspeicher frei. Dieses Transkript ist mit „schnell“ erstellt. Tipp: App ganz schließen, neu öffnen und unten „Transkript noch einmal genau versuchen“ antippen.') : null,
-      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Sprache', h('span', { class: 'grau' }, 'Schätzung')),
+      h('h2', {}, 'Messwerte'),
+      h('p', { class: 'grau' }, 'Schätzungen des Geräts. Antippen klappt einen Bereich auf.'),
+      klappe('sprache', 'Sprache', p.tempo + ' Wörter/Min.',
         h('table', { class: 'werte' },
           zeile('Wörter', String(p.woerter)),
           zeile('Tempo', p.tempo + ' Wörter/Min.'),
@@ -172,7 +176,7 @@ function messTeil(u, ruhe) {
         fuell ? h('div', { class: 'hinweis' }, fuell) : null,
         h('div', { class: 'hinweis' }, 'Ein Sprechabschnitt ist das Stück zwischen zwei Atempausen. Die Satzlänge hängt an den Satzzeichen des Transkripts und ist deshalb oft unsicher.'),
         h('div', { class: 'hinweis' }, '„äh“ und „ähm“ verschluckt das Transkript oft. Der Wert für Füllwörter ist deshalb eher zu niedrig.')),
-      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Pausen', h('span', { class: 'grau' }, 'Schätzung')),
+      klappe('pausen', 'Pausen', s.keineStimme || s.unsicher ? '' : String(s.pausen),
         s.keineStimme ? h('div', { class: 'hinweis' }, 'Es wurde keine Stimme erkannt.') : h('table', { class: 'werte' },
           zeile('Pausen ab 0,7 Sekunden', unsicher(String(s.pausen))),
           zeile('davon ab 2 Sekunden', unsicher(String(s.pausenLang))),
@@ -181,14 +185,14 @@ function messTeil(u, ruhe) {
           zeile('Sprechanteil', unsicher(s.sprechAnteil + ' %')),
           zeile('Erste Worte nach', unsicher(zahl(s.ersteWorteNach, ' s')))),
         s.unsicher ? h('div', { class: 'hinweis' }, 'Die Stimme hebt sich kaum vom Raumgeräusch ab. Pausen und Lautstärke lassen sich deshalb nicht verlässlich messen.') : null),
-      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Stimme', h('span', { class: 'grau' }, 'Schätzung')),
+      klappe('stimme', 'Stimme', s.keineStimme || s.tonhoehe == null ? '' : s.tonhoehe + ' Hz',
         s.keineStimme ? h('div', { class: 'hinweis' }, 'Es wurde keine Stimme erkannt.') : h('table', { class: 'werte' },
           zeile('Schwankung der Lautstärke', unsicher(zahl(s.lautSchwankung, ' dB'))),
           zeile('Tonhöhe (Mitte)', zahl(s.tonhoehe, ' Hz')),
           zeile('Schwankung der Tonhöhe', zahl(s.tonSchwankung, ' Halbtöne'))),
         h('div', { class: 'hinweis' }, 'Größere Schwankung bedeutet mehr Wechsel in der Stimme. Vergleiche die Werte mit deinen eigenen früheren Reden.')),
       koerperTeil(u),
-      h('details', { class: 'gruppe' }, h('summary', {}, 'Transkript anzeigen'),
+      klappe('transkript', 'Transkript', '',
         u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
         h('div', { class: 'hinweis' }, 'Automatisch erstellt' + (m.modell ? ' (Transkript: ' + m.modell.replace('onnx-community/whisper-base', 'schnell') + ')' : '') + '. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
       nurKoerper, nurTon, nochmal, stand);
@@ -215,23 +219,32 @@ export function uebungSeite(app, id) {
       nach() { if (url) spieler.src = url; },
     };
     const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
+    // Das Wichtigste zuerst: Sobald gemessen ist, steht die Bewertung des Coachs oben, die Messwerte darunter.
+    const bereich = h('div', { class: 'ergebnis' });
+    if (u.status === 'fertig') {
+      let coach = null;
+      const ordne = () => { bereich.classList.toggle('gemessen', !!u.messung); if (coach && coach.neu) coach.neu(); };
+      const mess = messTeil(u, ruhe, ordne);
+      coach = coachTeil(u); coach.classList.add('coachBox');
+      bereich.append(mess, coach); ordne();
+    }
     fuelle(app, 
       kopf('Ergebnis'),
       h('div', { class: 'begriffTitel', lang: 'de' }, u.aufgabe),
       h('p', { class: 'grau' }, [(MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''), u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', u.aufbau ? 'Aufbau ' + u.aufbau : null, datumText(u.datum)].filter(Boolean).join(' · ')),
       u.status !== 'fertig' ? h('p', { class: 'warn' }, 'Diese Aufnahme wurde nicht sauber beendet. Die Zeiten fehlen deshalb.') : null,
-      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Zeit'),
+      u.fehler ? h('p', { class: 'hinweis fehler' }, 'Beim Speichern der Aufnahme gab es einen Fehler: ' + u.fehler) : null,
+      bereich,
+      klappe('zeit', 'Zeit', u.status === 'fertig' ? fmtZeit(u.ist) + ' von ' + fmtZeit(u.soll) : '',
         h('table', { class: 'werte' },
           zeile('Soll', fmtZeit(u.soll)),
           zeile('Ist', u.status === 'fertig' ? fmtZeit(u.ist) : '–'),
           zeile('Abweichung', u.status === 'fertig' ? abweichung(u) : '–'),
           u.beendetDurch ? zeile('Beendet durch', ENDE[u.beendetDurch] || u.beendetDurch) : null)),
-      u.fehler ? h('p', { class: 'hinweis fehler' }, 'Beim Speichern der Aufnahme gab es einen Fehler: ' + u.fehler) : null,
-      u.status === 'fertig' ? messTeil(u, ruhe) : null,
-      spieler, sichern,
-      h('p', { class: 'grau' }, u.typ === 'ton' ? 'Im Teilen-Menü „In Dateien sichern“ wählen.' : 'Im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
-      info,
-      u.status === 'fertig' ? coachTeil(u) : null,
+      klappe('aufnahme', u.typ === 'ton' ? 'Aufnahme anhören und sichern' : 'Aufnahme ansehen und sichern', '',
+        spieler, sichern,
+        h('p', { class: 'grau' }, u.typ === 'ton' ? 'Im Teilen-Menü „In Dateien sichern“ wählen.' : 'Im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
+        info),
       h('button', { class: 'breit', onclick: () => geheZu('#/') }, 'Zum Start'),
       h('button', { class: 'breit leise', onclick: async () => {
         if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) return;

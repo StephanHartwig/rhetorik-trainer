@@ -49,6 +49,20 @@ export function regler({ min, max, schritt, knopf, wert, text, beiWechsel }) {
   return { anzeige, zeile };
 }
 
+// Aufklappbarer Kasten: zu ist er eine Zeile mit Titel und Kurzwert. Merkt sich je Name, ob er offen war.
+const K_KLAPP = 'rt.klapp.offen';
+function offeneKlappen() { try { return JSON.parse(localStorage.getItem(K_KLAPP)) || []; } catch (e) { return []; } }
+export function klappe(name, titel, wert, ...inhalt) {
+  const d = h('details', { class: 'klapp gruppe' }, h('summary', {}, h('span', {}, titel), wert ? h('span', { class: 'wert' }, wert) : null), inhalt);
+  if (offeneKlappen().includes(name)) d.open = true;
+  d.addEventListener('toggle', () => {
+    const l = offeneKlappen().filter((x) => x !== name);
+    if (d.open) l.push(name);
+    try { localStorage.setItem(K_KLAPP, JSON.stringify(l)); } catch (e) {}
+  });
+  return d;
+}
+
 export function gruppe(titel, anzeige, ...inhalt) {
   return h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, h('span', {}, titel), anzeige), inhalt);
 }

@@ -1,11 +1,11 @@
 // Ergebnisseite, Teil „Auswertung“: automatisch über die Anthropic-Schnittstelle oder von Hand über die Claude-App.
-import { h, fuelle, geheZu } from './ui.js?v=2001';
-import { fmtZeit } from './store.js?v=2001';
-import { paketText, codeLesen } from './auswertung.js?v=2001';
-import { bilderLaden, uebungSpeichern } from './db.js?v=2001';
-import { md } from './md.js?v=2001';
-import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2001';
-import { wachAn, wachAus } from './geraet.js?v=2001';
+import { h, fuelle, geheZu, klappe } from './ui.js?v=2002';
+import { fmtZeit } from './store.js?v=2002';
+import { paketText, codeLesen } from './auswertung.js?v=2002';
+import { bilderLaden, uebungSpeichern } from './db.js?v=2002';
+import { md } from './md.js?v=2002';
+import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2002';
+import { wachAn, wachAus } from './geraet.js?v=2002';
 
 const PUNKT = { 1: 'erfüllt', 0.5: 'teilweise', 0: 'fehlt' };
 const dollar = (x) => (x < 0.01 ? 'unter 0,01' : x.toFixed(2).replace('.', ',')) + ' US-Dollar';
@@ -95,18 +95,19 @@ export function coachTeil(u) {
     // ---------- Anzeige ----------
     const e = u.ergebnis, a = u.auswertung;
     const zeile = (x, y) => h('tr', {}, h('td', {}, x), h('td', {}, y));
-    const feedback = u.feedback ? h('details', {}, h('summary', {}, 'Ganzes Feedback anzeigen'), h('div', { class: 'feedback md', lang: 'de' }, md(entwirren(u.feedback)))) : null;
-    if (feedback && (frisch || !e)) feedback.open = true;
+    const feedback = u.feedback ? h('details', {}, h('summary', {}, 'Feedback des Coachs'), h('div', { class: 'feedback md', lang: 'de' }, md(entwirren(u.feedback)))) : null;
+    if (feedback) feedback.open = true;       // Die Bewertung ist das Wichtigste: sie steht offen da
     frisch = false;
     fuelle(box,
-      e || u.feedback ? h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Bewertung des Coachs', e ? h('span', { class: 'wert' }, 'Note ' + e.note) : null),
+      e || u.feedback ? h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Bewertung des Coachs'),
+        e ? h('div', { class: 'noteGross' }, h('span', {}, 'Note'), e.note) : null,
         e && Object.keys(e.punkte).length ? h('table', { class: 'werte' }, Object.entries(e.punkte).map(([n, w]) => zeile(n, PUNKT[w] || String(w)))) : null,
         e && e.aufgabe ? h('div', { class: 'aufgabe' }, h('div', { class: 'grau' }, 'Aufgabe für morgen'), entwirren(e.aufgabe)) : null,
         a && a.ohneCode ? h('div', { class: 'hinweis' }, 'Die Antwort enthielt keinen Ergebniscode. Note und Aufgabe für morgen fehlen deshalb im Verlauf.') : null,
         a && a.abgeschnitten ? h('div', { class: 'hinweis' }, 'Die Antwort wurde wegen ihrer Länge abgeschnitten.') : null,
         feedback,
         a ? h('div', { class: 'hinweis' }, 'Automatisch ausgewertet mit ' + a.modell + '. Kosten dieser Auswertung: etwa ' + dollar(a.kosten) + '.') : null) : null,
-      h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Auswertung'),
+      (e || u.feedback ? (...x) => klappe('auswerten', 'Noch einmal auswerten', '', x) : (...x) => h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Auswertung'), x))(
         bereit ? null : h('div', { class: 'hinweis' }, 'Erst „Messwerte berechnen“, dann auswerten lassen.'),
         auto.bereit ? [
           autoKnopf,
@@ -119,5 +120,6 @@ export function coachTeil(u) {
         ]));
   }
   zeichne();
+  box.neu = zeichne;
   return box;
 }
