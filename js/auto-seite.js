@@ -1,6 +1,6 @@
 // Einstellungsseite „Automatische Auswertung“: Schlüssel, Coach-Anweisung, Modell, Verbindungstest.
-import { h, fuelle, kopf, chips, gruppe } from './ui.js?v=19';
-import { AUTO_MODELLE, autoModell, setzeAutoModell, setzeSchluessel, setzeCoach, coachText, autoStand, verbindungTesten } from './auto.js?v=19';
+import { h, fuelle, kopf, chips, gruppe } from './ui.js?v=20';
+import { AUTO_MODELLE, autoModell, setzeAutoModell, setzeSchluessel, setzeCoach, coachText, autoStand, verbindungTesten } from './auto.js?v=20';
 
 export function autoSeite(app) {
   function zeichne(meldung, fehler) {

@@ -1,6 +1,6 @@
 // Stimme aufwärmen: geführte Abfolge ohne Aufnahme und ohne Auswertung.
-import { h, fuelle, kopf, geheZu } from './ui.js?v=19';
-import { wachAn, wachAus } from './geraet.js?v=19';
+import { h, fuelle, kopf, geheZu } from './ui.js?v=20';
+import { wachAn, wachAus } from './geraet.js?v=20';
 
 const SCHRITTE = [
   ['Ankommen', '', 'Stell dich aufrecht hin, Füße hüftbreit. Atme dreimal ruhig durch die Nase ein und durch den Mund aus.'],

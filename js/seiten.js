@@ -1,14 +1,14 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=19';
-import { fmtZeit, laden } from './store.js?v=19';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=19';
-import { koerperMessen } from './koerper.js?v=19';
-import { coachTeil } from './coach.js?v=19';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=19';
-import * as I from './impulse.js?v=19';
-import { messen, MODELLE, luftHolen } from './messung.js?v=19';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=19';
-import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=19';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=20';
+import { fmtZeit, laden } from './store.js?v=20';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden } from './db.js?v=20';
+import { koerperMessen } from './koerper.js?v=20';
+import { coachTeil } from './coach.js?v=20';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=20';
+import * as I from './impulse.js?v=20';
+import { messen, MODELLE, luftHolen } from './messung.js?v=20';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=20';
+import { lauf, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=20';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -260,8 +260,8 @@ const EIGEN = {
   begriff: { titel: 'Eigene Begriffe', neu: 'Neuer Begriff', schon: 'Diesen Begriff gibt es schon.', leer: 'Noch keine eigenen Begriffe.', max: 80,
     text: 'Eigene Begriffe werden unter die eingebauten gemischt. Nur diese Liste ist einsehbar.',
     liste: eigeneBegriffe, dazu: eigenenHinzufuegen, weg: eigenenLoeschen },
-  angriff: { titel: 'Eigene Angriffe', neu: 'Neuer Angriff oder Vorwurf', schon: 'Diesen Angriff gibt es schon.', leer: 'Noch keine eigenen Angriffe.', max: 120,
-    text: 'Eigene Angriffe werden bei der Schlagfertigkeit unter die eingebauten gemischt. Nur diese Liste ist einsehbar.',
+  angriff: { titel: 'Eigene Aussagen', neu: 'Neue Aussage, auf die du reagieren willst', schon: 'Diese Aussage gibt es schon.', leer: 'Noch keine eigenen Aussagen.', max: 120,
+    text: 'Hier trägst du Sätze ein, die dir jemand gesagt hat oder sagen könnte. Sie werden bei der Schlagfertigkeit unter die eingebauten gemischt. Nur diese Liste ist einsehbar.',
     liste: () => I.eigene('angriff'), dazu: (t) => I.eigenenHinzufuegen('angriff', t), weg: (t) => I.eigenenLoeschen('angriff', t) },
   einwand: { titel: 'Eigene Einwände', neu: 'Neuer Einwand', schon: 'Diesen Einwand gibt es schon.', leer: 'Noch keine eigenen Einwände.', max: 120,
     text: 'Eigene Einwände werden unter die eingebauten gemischt. Nur diese Liste ist einsehbar.',

@@ -1,17 +1,17 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=19';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=19';
-import { redeAblauf } from './rede.js?v=19';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=19';
-import { verlaufSeite, startInfo } from './verlauf.js?v=19';
-import { autoSeite } from './auto-seite.js?v=19';
-import { autoStand } from './auto.js?v=19';
-import { eigeneBegriffe } from './begriffe.js?v=19';
-import { eigene } from './impulse.js?v=19';
-import { heuteSeite, heuteStand } from './heute.js?v=19';
-import { stimmeSeite } from './stimme.js?v=19';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=20';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=20';
+import { redeAblauf } from './rede.js?v=20';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=20';
+import { verlaufSeite, startInfo } from './verlauf.js?v=20';
+import { autoSeite } from './auto-seite.js?v=20';
+import { autoStand } from './auto.js?v=20';
+import { eigeneBegriffe } from './begriffe.js?v=20';
+import { eigene } from './impulse.js?v=20';
+import { heuteSeite, heuteStand } from './heute.js?v=20';
+import { stimmeSeite } from './stimme.js?v=20';
 
-const VERSION = 19;
+const VERSION = 20;
 const app = document.getElementById('app');
 let E = laden();
 const merke = (k, v) => { E[k] = v; E = speichern(E); };
@@ -112,7 +112,7 @@ function einstellungen() {
       h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht etwa 5 Minuten und lädt einmalig rund 250 MB.')),
     h('button', { class: 'breit', onclick: () => geheZu('#/auto') }, 'Automatische Auswertung (' + (autoStand().bereit ? 'eingerichtet' : 'nicht eingerichtet') + ')'),
     h('button', { class: 'breit', onclick: () => geheZu('#/eigene') }, 'Eigene Begriffe (' + eigeneBegriffe().length + ')'),
-    h('button', { class: 'breit', onclick: () => geheZu('#/eigene/angriff') }, 'Eigene Angriffe (' + eigene('angriff').length + ')'),
+    h('button', { class: 'breit', onclick: () => geheZu('#/eigene/angriff') }, 'Eigene Aussagen für Schlagfertigkeit (' + eigene('angriff').length + ')'),
     h('button', { class: 'breit', onclick: () => geheZu('#/eigene/einwand') }, 'Eigene Einwände (' + eigene('einwand').length + ')'),
     h('button', { class: 'breit', onclick: () => {
       if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { E = speichern({ ...STANDARD }); zeigen(); }

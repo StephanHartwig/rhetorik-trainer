@@ -1,6 +1,6 @@
 // Impulse für die Schlagfertigkeit und Einwände ziehen: zufällig, ohne Wiederholung, bis ein Vorrat durch ist.
 // Die eingebauten Listen werden nirgends angezeigt. Nur eigene Einträge sind einsehbar.
-import { IMPULSE } from './impulse-daten.js?v=19';
+import { IMPULSE } from './impulse-daten.js?v=20';
 
 const K_VERBRAUCHT = 'rt.impulse.verbraucht';
 const K_EIGENE = { angriff: 'rt.impulse.eigene', einwand: 'rt.einwand.eigene' };
@@ -40,11 +40,9 @@ function ausTopf(name, alle) {
   return text;
 }
 
-// Schlagfertigkeit: Angriffe (eingebaute und eigene) und Begriffe in einem gemischten Topf.
+// Schlagfertigkeit: immer eine Aussage, auf die man reagiert (eingebaute und eigene), nie ein einzelner Begriff.
 export function zieheImpuls() {
-  const v = liste(), angriffe = v.angriff.concat(eigene('angriff'));
-  const text = ausTopf('schlag', angriffe.concat(v.begriff));
-  return { text, art: angriffe.includes(text) ? 'Angriff' : 'Begriff' };
+  return { text: ausTopf('schlag', liste().angriff.concat(eigene('angriff'))), art: 'Aussage' };
 }
 export function zieheEinwand() {
   return { text: ausTopf('einwand', liste().einwand.concat(eigene('einwand'))) };

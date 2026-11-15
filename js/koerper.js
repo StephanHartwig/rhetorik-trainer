@@ -1,7 +1,7 @@
 // Körpermessung am gespeicherten Video: Bild für Bild Körper und Gesicht erkennen, auswerten, Einzelbilder ablegen.
-import { poseLaden, gesichtLaden } from './geraet.js?v=19';
-import { aufnahmeDatei, uebungSpeichern, bildSpeichern, bilderLoeschen } from './db.js?v=19';
-import { koerperAuswerten, bildZeiten } from './koerper-rechnen.js?v=19';
+import { poseLaden, gesichtLaden } from './geraet.js?v=20';
+import { aufnahmeDatei, uebungSpeichern, bildSpeichern, bilderLoeschen } from './db.js?v=20';
+import { koerperAuswerten, bildZeiten } from './koerper-rechnen.js?v=20';
 
 const pause = () => new Promise((r) => setTimeout(r, 0));
 

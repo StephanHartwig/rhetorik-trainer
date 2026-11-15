@@ -1,11 +1,11 @@
 // Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=19';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=19';
-import { ziehe } from './begriffe.js?v=19';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=19';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=19';
-import * as G from './geraet.js?v=19';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=20';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=20';
+import { ziehe } from './begriffe.js?v=20';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=20';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=20';
+import * as G from './geraet.js?v=20';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
@@ -13,7 +13,7 @@ const UEBERZUG_MAX = 600;   // spätestens 10 Minuten nach dem Soll endet die Au
 
 const ART = {
   rede: { titel: 'Stegreifrede', knopf: 'Begriff zeigen', satz: 'Der Begriff erscheint sofort. Kein Tauschen, kein Überspringen.' },
-  schlag: { titel: 'Schlagfertigkeit', knopf: 'Impuls zeigen', satz: 'Der Impuls erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte direkt.' },
+  schlag: { titel: 'Schlagfertigkeit', knopf: 'Aussage zeigen', satz: 'Jemand sagt etwas Kritisches, Komisches oder Dummes zu dir. Die Aussage erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Reagiere direkt.' },
   einwand: { titel: 'Einwand', knopf: 'Einwand zeigen', satz: 'Der Einwand erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte mit einem bildhaften Vergleich.' },
 };
 
