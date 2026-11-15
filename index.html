@@ -49,6 +49,7 @@
 
 <h1>Rhetorik-Trainer · Probe</h1>
 <p class="mut">Von oben nach unten durchgehen. Unter jedem Test antippen, wie es lief. Ganz unten „Bericht kopieren“ und den Text an Claude Code schicken.</p>
+<button id="upd" class="stop" hidden></button>
 <p id="wake" class="mut" style="font-weight:600"></p>
 <label class="chk mut"><input type="checkbox" id="chkWach"> Bildschirm geht trotzdem aus? Dann hier einschalten.</label>
 <p class="mut">Die App muss offen und sichtbar bleiben. Beim Wechsel in eine andere App oder bei gesperrtem Bildschirm hält das iPhone sie an.</p>
@@ -152,7 +153,13 @@ const $ = (id) => document.getElementById(id);
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32';
 const POSE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
 const FACE = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
-const VERSION = 'Probe 3';
+const VERSION = 'Probe 4';
+// Prüft beim Öffnen, ob online eine neuere Fassung liegt, und bietet dann einen Knopf an.
+fetch('index.html?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => {
+  const m = t.match(/const VERSION = '([^']+)'/);
+  if (m && m[1] !== VERSION) { $('upd').textContent = 'Neue Fassung laden (' + m[1] + ')'; $('upd').hidden = false; }
+}).catch(() => {});
+$('upd').onclick = () => location.replace('./?v=' + Date.now());
 
 // ---------- Ergebnisse merken (überlebt Neuladen und Abstürze) ----------
 let R = {};
