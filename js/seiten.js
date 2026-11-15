@@ -1,10 +1,10 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=7';
-import { fmtZeit } from './store.js?v=7';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand } from './db.js?v=7';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=7';
-import { messen } from './messung.js?v=7';
-import { wachAn, wachAus } from './geraet.js?v=7';
+import { h, fuelle, kopf, geheZu, datumText, mb } from './ui.js?v=8';
+import { fmtZeit, laden } from './store.js?v=8';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand } from './db.js?v=8';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=8';
+import { messen, MODELLE } from './messung.js?v=8';
+import { wachAn, wachAus } from './geraet.js?v=8';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -22,17 +22,18 @@ function messTeil(u) {
   const zahl = (x, einheit = '') => (x == null ? 'nicht messbar' : String(x).replace('.', ',') + einheit);
   function starte(knopf, stand) {
     knopf.disabled = true; stand.className = 'hinweis'; wachAn();
-    messen(u, (t) => { stand.textContent = t; }).then(zeichne)
+    messen(u, (t) => { stand.textContent = t; }, laden().transkript).then(zeichne)
       .catch((e) => { stand.className = 'hinweis fehler'; stand.textContent = 'Die Messung hat nicht geklappt: ' + e.message; knopf.disabled = false; })
       .finally(wachAus);
   }
   function zeichne() {
     const m = u.messung, stand = h('div', { class: 'hinweis' });
     if (!m) {
-      const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * 0.35 + 0.3));
+      const mo = MODELLE[laden().transkript] || MODELLE.mittel;
+      const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * mo.minJeMin + 0.3));
       const knopf = h('button', { class: 'breit blau', onclick: () => starte(knopf, stand) }, 'Messwerte berechnen');
       fuelle(box, knopf,
-        h('p', { class: 'grau' }, 'Dauert etwa ' + min + (min === 1 ? ' Minute' : ' Minuten') + '. Die App dabei offen lassen. Beim ersten Mal lädt sie einmalig rund 80 MB, am besten im WLAN.'),
+        h('p', { class: 'grau' }, 'Dauert etwa ' + min + (min === 1 ? ' Minute' : ' Minuten') + ' (Transkript: ' + mo.name + '). Die App dabei offen lassen. Beim ersten Mal lädt sie einmalig rund ' + mo.mb + ' MB, am besten im WLAN.'),
         stand);
       return;
     }
@@ -68,7 +69,7 @@ function messTeil(u) {
         h('div', { class: 'hinweis' }, 'Größere Schwankung bedeutet mehr Wechsel in der Stimme. Vergleiche die Werte mit deinen eigenen früheren Reden.')),
       h('details', { class: 'gruppe' }, h('summary', {}, 'Transkript anzeigen'),
         u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
-        h('div', { class: 'hinweis' }, 'Automatisch erstellt. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
+        h('div', { class: 'hinweis' }, 'Automatisch erstellt' + (m.modell ? ' (Transkript: ' + m.modell.replace('onnx-community/whisper-base', 'schnell') + ')' : '') + '. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
       nochmal, stand);
   }
   zeichne();

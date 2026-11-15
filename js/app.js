@@ -1,11 +1,11 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=7';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=7';
-import { redeAblauf } from './rede.js?v=7';
-import { uebungSeite, verlaufSeite, eigeneSeite } from './seiten.js?v=7';
-import { eigeneBegriffe } from './begriffe.js?v=7';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=8';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=8';
+import { redeAblauf } from './rede.js?v=8';
+import { uebungSeite, verlaufSeite, eigeneSeite } from './seiten.js?v=8';
+import { eigeneBegriffe } from './begriffe.js?v=8';
 
-const VERSION = 7;
+const VERSION = 8;
 const app = document.getElementById('app');
 let E = laden();
 const merke = (k, v) => { E[k] = v; E = speichern(E); };
@@ -86,6 +86,7 @@ function einstellungen() {
   const fach = regler({ min: 0, max: 100, schritt: 1, knopf: 1, wert: E.fachAnteil, text: (v) => v + ' %', beiWechsel: (v) => merke('fachAnteil', v) });
   const signalChips = chips([[0, 'aus'], [10, '10 s'], [30, '30 s'], [60, '60 s']], E.signal, (v) => { merke('signal', v); hinweise(); });
   const aufbauChips = chips([['klassisch', 'klassisch'], ['frei', 'frei']], E.aufbau, (v) => merke('aufbau', v));
+  const transChips = chips([['mittel', 'schnell'], ['gross', 'genau']], E.transkript, (v) => merke('transkript', v));
   hinweise();
 
   return [
@@ -101,6 +102,8 @@ function einstellungen() {
     gruppe('Aufbau der Rede', null, aufbauChips.el,
       h('div', { class: 'hinweis' }, 'Klassisch: Einstieg, drei Argumente, Wiederholung, Aufforderung, Schluss. Frei: eigener Aufbau, der Coach wertet das nicht ab.')),
     gruppe('Anteil Fachbegriffe', fach.anzeige, fach.zeile),
+    gruppe('Transkript', null, transChips.el,
+      h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht aber etwa dreimal so lange und lädt einmalig rund 250 MB.')),
     h('button', { class: 'breit', onclick: () => geheZu('#/eigene') }, 'Eigene Begriffe (' + eigeneBegriffe().length + ')'),
     h('button', { class: 'breit', onclick: () => {
       if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { E = speichern({ ...STANDARD }); zeigen(); }

@@ -11,6 +11,7 @@ export const STANDARD = {
   aufbau: 'klassisch',  // 'klassisch' oder 'frei'
   fachAnteil: 33,       // Prozent Fachbegriffe
   ausschnitt: 'nah',    // 'nah' oder 'ganz', letzte Wahl
+  transkript: 'mittel', // 'mittel' (schnell) oder 'gross' (genau)
 };
 
 export const GRENZEN = {
@@ -21,7 +22,7 @@ export const GRENZEN = {
   fachAnteil: [0, 100],
 };
 
-const ERLAUBT = { signal: [0, 10, 30, 60], aufbau: ['klassisch', 'frei'], ausschnitt: ['nah', 'ganz'] };
+const ERLAUBT = { signal: [0, 10, 30, 60], aufbau: ['klassisch', 'frei'], ausschnitt: ['nah', 'ganz'], transkript: ['mittel', 'gross'] };
 
 function pruefen(e) {
   const out = { ...STANDARD };
