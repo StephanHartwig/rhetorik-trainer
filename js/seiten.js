@@ -1,15 +1,15 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2101';
-import { fmtZeit, laden } from './store.js?v=2101';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2101';
-import { koerperMessen } from './koerper.js?v=2101';
-import { coachTeil } from './coach.js?v=2101';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2101';
-import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2101';
-import * as I from './impulse.js?v=2101';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2101';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2101';
-import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2101';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2102';
+import { fmtZeit, laden } from './store.js?v=2102';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2102';
+import { koerperMessen } from './koerper.js?v=2102';
+import { coachTeil } from './coach.js?v=2102';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2102';
+import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2102';
+import * as I from './impulse.js?v=2102';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2102';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2102';
+import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2102';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { speicherfehler: 'Fehler beim Speichern', abbruch: 'Aufnahme wurde unterbrochen', tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };

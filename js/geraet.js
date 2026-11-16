@@ -1,5 +1,5 @@
 // Gerätefunktionen: Kamera, Ton (Signal, Pegel), Bildschirm an, Aufnahme
-import { stueckSpeichern, pcmSpeichern } from './db.js?v=2101';
+import { stueckSpeichern, pcmSpeichern } from './db.js?v=2102';
 
 // ---------- Kamera und Mikrofon ----------
 let stream;
@@ -129,7 +129,7 @@ export function aufnahmeStarten(s, id, nurTon) {
 let wlModul;
 export function pcmVorbereiten() {
   if (!ctx || !ctx.audioWorklet) return Promise.reject(new Error('kein AudioWorklet'));
-  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=2101').catch((e) => { wlModul = null; throw e; }));
+  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=2102').catch((e) => { wlModul = null; throw e; }));
 }
 export async function pcmStarten(s, id) {
   await pcmVorbereiten();
@@ -160,8 +160,9 @@ export async function pcmStarten(s, id) {
 }
 
 // ---------- Handzeichen (nur Ganzkörper): beide Hände über dem Kopf ----------
-const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32';
-const POSE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
+// Erkennung (MediaPipe tasks-vision 0.10.32) und ihre Modelle liegen im eigenen Projekt, nichts kommt von fremden Servern.
+const MP = new URL('../lib/mediapipe', import.meta.url).href;
+const POSE = MP + '/pose_landmarker_lite.task';
 let poseP, poseArt, gesichtP, gesichtArt;
 async function baue(Klasse, optionen, cpu) {
   const m = await import(MP + '/vision_bundle.mjs');
@@ -176,7 +177,7 @@ export function poseLaden(cpu = false) {
   poseArt = cpu;
   return poseP || (poseP = baue('PoseLandmarker', { modell: POSE, rest: { numPoses: 1 } }, cpu).catch((e) => { poseP = null; throw e; }));
 }
-const GESICHT = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task';
+const GESICHT = MP + '/face_landmarker.task';
 export function gesichtLaden(cpu = false) {
   if (gesichtP && gesichtArt !== cpu) gesichtSchliessen();
   gesichtArt = cpu;

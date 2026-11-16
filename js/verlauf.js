@@ -1,10 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, klapp } from './ui.js?v=2101';
-import { fmtZeit } from './store.js?v=2101';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2101';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2101';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2101';
-import { entwirren } from './auto.js?v=2101';
+import { h, fuelle, kopf, geheZu, datumText, mb, klapp } from './ui.js?v=2102';
+import { fmtZeit } from './store.js?v=2102';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2102';
+import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2102';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2102';
+import { entwirren } from './auto.js?v=2102';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');

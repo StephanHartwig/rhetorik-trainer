@@ -1,7 +1,10 @@
 // Arbeits-Thread für die Messung: erst die Stimme, dann das Transkript mit Whisper.
 // Läuft getrennt von der Oberfläche, damit die App bedienbar bleibt.
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.min.js';
-import { stimmAnalyse } from './analyse.js?v=2101';
+// transformers.js 3.8.1 samt Rechenkern liegt im eigenen Projekt; nur die Sprachmodelle (reine Daten) kommen von huggingface.co.
+import { pipeline, env } from '../lib/transformers/transformers.min.js';
+env.backends.onnx.wasm.wasmPaths = new URL('../lib/transformers/', import.meta.url).href;
+env.allowLocalModels = false;
+import { stimmAnalyse } from './analyse.js?v=2102';
 
 // Whisper erfindet bei Stille manchmal solche Sätze. Sie werden verworfen.
 const ERFUNDEN = /untertitel|amara\.org|vielen dank fürs zuschauen|bis zum nächsten mal|copyright|im auftrag des/i;

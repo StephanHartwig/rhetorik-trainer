@@ -1,9 +1,9 @@
 // Automatische Auswertung: Die App schickt das Auswertungspaket selbst an Claude (Anthropic-Schnittstelle).
 // Schlüssel, Coach-Anweisung und Modellwahl liegen nur auf diesem Gerät. Nichts davon steht im öffentlichen Code.
-import { paketText } from './auswertung.js?v=2101';
+import { paketText } from './auswertung.js?v=2102';
 
 const K_KEY = 'rt.api.schluessel', K_MODELL = 'rt.api.modell', K_COACH = 'rt.api.coach';
-const SDK = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.8.0/+esm';
+const SDK = '../lib/anthropic-sdk.mjs';   // Anthropic-SDK 1.8.0, gebündelt im eigenen Projekt
 
 // Preise in US-Dollar je Million Token (Stand 03.11.2026), nur für die Kostenschätzung
 export const AUTO_MODELLE = [
