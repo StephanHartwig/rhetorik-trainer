@@ -1,15 +1,16 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe } from './ui.js?v=2102';
-import { fmtZeit, laden } from './store.js?v=2102';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2102';
-import { koerperMessen } from './koerper.js?v=2102';
-import { coachTeil } from './coach.js?v=2102';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2102';
-import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2102';
-import * as I from './impulse.js?v=2102';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2102';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2102';
-import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2102';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe, menue } from './ui.js?v=2104';
+import { fmtZeit, laden } from './store.js?v=2104';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2104';
+import { koerperMessen } from './koerper.js?v=2104';
+import { coachTeil } from './coach.js?v=2104';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2104';
+import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2104';
+import { artName, aufbauName } from './auswertung.js?v=2104';
+import * as I from './impulse.js?v=2104';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2104';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2104';
+import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2104';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { speicherfehler: 'Fehler beim Speichern', abbruch: 'Aufnahme wurde unterbrochen', tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
@@ -63,6 +64,18 @@ function koerperTeil(u) {
     k.diag ? h('div', { class: 'hinweis' }, 'Prüfwert für die Feinabstimmung: Kopfhaltung ' + k.diag.yaw + '° / ' + k.diag.pitch + '°, erkannt in ' + k.erkannt + ' % der Bilder' + (k.diag.laecheln90 != null ? '. Blick weg wegen Kopf ' + k.diag.wegKopf + ' %, Seite ' + k.diag.wegSeite + ' %, oben ' + k.diag.wegHoch + ' %, unten ' + k.diag.wegRunter + ' %. Lächel-Wert Mitte ' + k.diag.laecheln50 + ', oberes Zehntel ' + k.diag.laecheln90 : '') + '.') : null,
     u.bilder && u.bilder.length ? h('div', { class: 'hinweis' }, 'Einzelbilder für die Auswertung (' + u.bilder.length + '):') : null,
     leiste);
+}
+
+// Zeile „Zeit“ im Kasten der Messwerte
+function zeitKlappe(u) {
+  const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
+  const fertig = u.status === 'fertig';
+  return klappe('zeit', 'Zeit', fertig ? fmtZeit(u.ist) + ' von ' + fmtZeit(u.soll) : '',
+    h('table', { class: 'werte' },
+      zeile('Soll', fmtZeit(u.soll)),
+      zeile('Ist', fertig ? fmtZeit(u.ist) : '–'),
+      zeile('Abweichung', fertig ? abweichung(u) : '–'),
+      u.beendetDurch ? zeile('Beendet durch', ENDE[u.beendetDurch] || u.beendetDurch) : null));
 }
 
 // ---------- Messwerte (Schätzungen des Geräts) ----------
@@ -141,6 +154,7 @@ function messTeil(u, ruhe, nachMessung) {
         lauf.weg(); if (ruhe) ruhe.nach();
         // Was schon gemessen ist, zeigen; die Fehlermeldung bleibt darüber stehen
         autoText = ''; fehlerText = 'Die Messung hat nicht geklappt: ' + e.message; zeichne();
+        box.scrollIntoView({ block: 'start' });       // die Meldung steht oben im Messteil
       }
       wachAus();
     })();
@@ -150,7 +164,8 @@ function messTeil(u, ruhe, nachMessung) {
     const m = u.messung, stand = h('div', { class: 'hinweis' });
     const warnung = [autoText ? h('p', { class: 'warn' }, autoText) : absturz && absturz.id === u.id ? h('p', { class: 'warn' }, absturz.text) : null, fehlerText ? h('p', { class: 'hinweis fehler' }, fehlerText) : null];
     fehlerText = '';
-    if (!m && u.ohneAufnahme) { fuelle(box, warnung, u.koerper ? koerperTeil(u) : null); return; }
+    box.wiederholen = null;
+    if (!m && u.ohneAufnahme) { fuelle(box, warnung, h('div', { class: 'stapel' }, zeitKlappe(u), u.koerper ? koerperTeil(u) : null)); return; }
     if (!m) {
       const mo = MODELLE[laden().transkript] || MODELLE.mittel;
       const min = Math.max(1, Math.ceil((u.ist || 60) / 60 * (mo.minJeMin + (u.typ === 'video' ? 0.35 : 0)) + 0.3));
@@ -158,21 +173,27 @@ function messTeil(u, ruhe, nachMessung) {
       fuelle(box, warnung, knopf,
         h('p', { class: 'grau' }, 'Dauert etwa ' + min + (min === 1 ? ' Minute' : ' Minuten') + ' (Transkript: ' + mo.name + '). Die App dabei offen lassen. Beim ersten Mal lädt sie einmalig rund ' + mo.mb + ' MB, am besten im WLAN.'),
         stand,
-        u.koerper ? koerperTeil(u) : null);
+        h('div', { class: 'stapel' }, zeitKlappe(u), u.koerper ? koerperTeil(u) : null));
       if (autoStart) { autoStart = false; starte(knopf, stand, 'ton'); }
       return;
     }
     const s = m.stimme, p = m.sprache;
     const unsicher = (wert) => (s.unsicher ? 'unsicher' : wert);
     const fuell = Object.entries(p.fuellEinzeln).sort((a, b) => b[1] - a[1]).map(([w, n]) => w + ' ' + n).join(', ');
-    const nochmal = u.ohneAufnahme ? null : h('button', { class: 'breit leise', onclick: () => starte(nochmal, stand, true) }, 'Messung wiederholen');
+    // „Messung wiederholen“ steht im Menü oben rechts; der Knopf selbst bleibt unsichtbar auf der Seite.
+    const nochmal = u.ohneAufnahme ? null : h('button', { class: 'breit leise', hidden: true, onclick: () => starte(nochmal, stand, true) }, 'Messung wiederholen');
+    if (nochmal) box.wiederholen = () => {
+      if (laufend.id) { alert('Es läuft schon eine Messung.'); return; }
+      if (!confirm('Die Messung neu berechnen? Das dauert wieder einige Minuten.')) return;
+      nochmal.click(); stand.scrollIntoView({ block: 'center' });
+    };
     const nurKoerper = !u.ohneAufnahme && u.typ === 'video' && koerperModus() !== 'aus' && (!u.koerper || u.koerper.fehler)
       ? h('button', { class: 'breit blau', onclick: () => starte(nurKoerper, stand, false) }, 'Körper nachmessen') : null;
     const nurTon = m.ersatz && !u.ohneAufnahme ? h('button', { class: 'breit', onclick: () => starte(nurTon, stand, 'ton') }, 'Transkript noch einmal genau versuchen') : null;
     fuelle(box, warnung,
       m.ersatz ? h('p', { class: 'warn' }, 'Für das genaue Transkript war zu wenig Arbeitsspeicher frei. Dieses Transkript ist mit „schnell“ erstellt. Tipp: App ganz schließen, neu öffnen und unten „Transkript noch einmal genau versuchen“ antippen.') : null,
       h('h2', {}, 'Messwerte'),
-      h('p', { class: 'grau' }, 'Schätzungen des Geräts. Antippen klappt einen Bereich auf.'),
+      h('div', { class: 'stapel' },
       klappe('sprache', 'Sprache', p.tempo + ' Wörter/Min.',
         h('table', { class: 'werte' },
           zeile('Wörter', String(p.woerter)),
@@ -202,8 +223,10 @@ function messTeil(u, ruhe, nachMessung) {
       klappe('transkript', 'Transkript', '',
         u.transkript && u.transkript.length ? u.transkript.map((t) => h('p', { class: 'tzeile' }, h('span', { class: 'grau' }, fmtZeit(t.t) + ' '), t.text)) : h('p', { class: 'grau' }, 'Kein Text erkannt.'),
         h('div', { class: 'hinweis' }, 'Automatisch erstellt' + (m.modell ? ' (Transkript: ' + m.modell.replace('onnx-community/whisper-base', 'schnell') + ')' : '') + '. Hörfehler sind möglich, vor allem bei Fachwörtern.')),
+      zeitKlappe(u)),
+      h('p', { class: 'grau' }, 'Schätzungen des Geräts. Antippen klappt eine Zeile auf.'),
       nurKoerper, nurTon, nochmal, stand);
-    if (autoStart) { autoStart = false; if (nochmal) starte(nochmal, stand, 'ton'); }
+    if (autoStart) { autoStart = false; if (nochmal) { starte(nochmal, stand, 'ton'); setTimeout(() => stand.scrollIntoView({ block: 'center' }), 300); } }
   }
   zeichne();
   return box;
@@ -218,21 +241,28 @@ export function uebungSeite(app, id) {
     if (!aktiv) return;
     if (!u) { fuelle(app, kopf('Ergebnis'), h('p', {}, 'Diese Übung gibt es nicht mehr.')); return; }
     const spieler = h(u.typ === 'ton' ? 'audio' : 'video', { class: 'spieler', controls: true, playsinline: true, preload: 'metadata' });
-    const sichern = h('button', { class: 'breit', disabled: true }, u.typ === 'ton' ? 'Ton sichern' : 'In Fotos sichern');
+    const sichern = h('button', { class: 'reihe', disabled: true }, h('span', {}, u.typ === 'ton' ? 'Ton sichern' : 'In Fotos sichern'), h('span', { class: 'pfeil' }, '›'));
     const info = h('div', { class: 'hinweis' });
     // Während der Messung gibt der Abspieler das Video frei, das spart Arbeitsspeicher.
     const ruhe = {
       vor() { try { spieler.pause(); spieler.removeAttribute('src'); spieler.load(); } catch (e) {} },
       nach() { if (url) spieler.src = url; },
     };
-    const zeile = (a, b) => h('tr', {}, h('td', {}, a), h('td', {}, b));
+    // Drei Schritte zeigen, wo die Übung steht: Aufnahme, Messung, Coach.
+    const schritte = h('div', { class: 'schritte' });
+    const zeigeSchritte = () => {
+      const stand = [true, !!u.messung, !!(u.feedback || u.ergebnis)], dran = stand.indexOf(false);
+      fuelle(schritte, ['Aufnahme', 'Messung', 'Coach'].map((name, i) => [
+        i ? h('span', { class: 'strich' + (stand[i] ? ' ok' : '') }) : null,
+        h('span', { class: 'schrittP' + (stand[i] ? ' ok' : i === dran ? ' dran' : '') }, h('b', {}, stand[i] ? '✓' : String(i + 1)), name)]));
+    };
     // Das Wichtigste zuerst: Sobald gemessen ist, steht die Bewertung des Coachs oben, die Messwerte darunter.
     const bereich = h('div', { class: 'ergebnis' });
+    let coach = null, mess = null;
     if (u.status === 'fertig') {
-      let coach = null;
-      const ordne = () => { bereich.classList.toggle('gemessen', !!u.messung); if (coach && coach.neu) coach.neu(); };
-      const mess = messTeil(u, ruhe, ordne);
-      coach = coachTeil(u); coach.classList.add('coachBox');
+      const ordne = () => { bereich.classList.toggle('gemessen', !!u.messung); if (coach && coach.neu) coach.neu(); zeigeSchritte(); };
+      mess = messTeil(u, ruhe, ordne);
+      coach = coachTeil(u, zeigeSchritte); coach.classList.add('coachBox');
       bereich.append(mess, coach); ordne();
     }
     // Nicht sauber beendete Aufnahme: Was gespeichert ist, lässt sich trotzdem als Übung abschließen und messen.
@@ -256,37 +286,39 @@ export function uebungSeite(app, id) {
     };
     // Export für Klara: Markdown-Datei mit Paket und Feedback über das Teilen-Menü
     const klaraInfo = h('div', { class: 'hinweis' });
-    const klaraKnopf = h('button', { class: 'breit', onclick: () => {
+    const klaraExport = () => {
       if (!u.messung) { klaraInfo.textContent = 'Erst „Messwerte berechnen“. Ohne Messwerte gibt es nichts zu exportieren.'; return; }
       const d = klaraDatei(u);
       dateiAbgeben(d.name, d.text, 'text/markdown').then((wie) => {
         klaraInfo.textContent = wie === 'abgebrochen' ? '' : 'Datei ' + d.name + (wie === 'geladen' ? ' wurde geladen.' : ' wurde übergeben.') + (u.feedback ? '' : ' Sie enthält noch kein Feedback des Coachs.');
       }).catch((e) => { klaraInfo.textContent = 'Der Export hat nicht geklappt (' + (e.name || e.message) + ').'; });
-    } }, 'Für Klara exportieren');
+    };
+    const aufnahmeBox = h('div', {},
+      h('h2', {}, 'Aufnahme'),
+      h('div', { class: 'stapel' },
+        klappe('aufnahme', u.typ === 'ton' ? 'Anhören' : 'Ansehen', '', spieler),
+        sichern),
+      h('p', { class: 'grau' }, u.typ === 'ton' ? 'Sichern: im Teilen-Menü „In Dateien sichern“ wählen.' : 'Sichern: im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
+      info);
     fuelle(app, 
-      kopf('Ergebnis', { rechts: h('button', { class: 'rad', 'aria-label': 'Übung löschen', onclick: loeschen }, '🗑') }),
+      kopf('Ergebnis', { rechts: menue(() => [
+        u.status === 'fertig' ? { text: 'Für Klara exportieren', tun: klaraExport } : null,
+        coach && (u.feedback || u.ergebnis) ? { text: 'Noch einmal auswerten', tun: () => coach.nochmal() } : null,
+        mess && mess.wiederholen ? { text: 'Messung wiederholen', tun: mess.wiederholen } : null,
+        { text: 'Übung löschen', rot: true, tun: loeschen }]) }),
       h('div', { class: 'begriffTitel', lang: 'de' }, u.aufgabe),
-      h('p', { class: 'grau' }, [(MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''), u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', u.aufbau ? 'Aufbau ' + u.aufbau : null, datumText(u.datum)].filter(Boolean).join(' · ')),
+      h('p', { class: 'grau' }, [artName(u) + (u.art ? ' (' + u.art + ')' : ''), u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah', u.aufbau === 'klassisch' || u.aufbau === 'frei' ? 'Aufbau ' + aufbauName(u) : null, u.einstieg ? 'Einstieg: ' + u.einstieg : null, datumText(u.datum)].filter(Boolean).join(' · ')),
+      u.status === 'fertig' ? schritte : null,
+      klaraInfo,
       u.status !== 'fertig' ? [h('p', { class: 'warn' }, 'Diese Aufnahme wurde nicht sauber beendet, zum Beispiel weil die App geschlossen wurde oder der Bildschirm ausging.'), rettenKnopf, rettenInfo] : null,
       u.ohneAufnahme ? h('p', { class: 'grau' }, 'Diese Übung stammt aus einer Sicherung. Video und Einzelbilder sind nicht dabei, neu messen geht deshalb nicht.') : null,
       u.fehler ? h('p', { class: 'hinweis fehler' }, 'Beim Speichern der Aufnahme gab es einen Fehler' + (u.beendetDurch === 'speicherfehler' ? ', deshalb wurde sie sofort beendet. Vermutlich ist der Speicher voll: Bitte im Verlauf alte Aufnahmen löschen.' : '.') + ' (' + u.fehler + ')') : null,
       bereich,
-      u.status === 'fertig' ? [klaraKnopf, klaraInfo] : null,
-      klappe('zeit', 'Zeit', u.status === 'fertig' ? fmtZeit(u.ist) + ' von ' + fmtZeit(u.soll) : '',
-        h('table', { class: 'werte' },
-          zeile('Soll', fmtZeit(u.soll)),
-          zeile('Ist', u.status === 'fertig' ? fmtZeit(u.ist) : '–'),
-          zeile('Abweichung', u.status === 'fertig' ? abweichung(u) : '–'),
-          u.beendetDurch ? zeile('Beendet durch', ENDE[u.beendetDurch] || u.beendetDurch) : null)),
-      klappe('aufnahme', u.typ === 'ton' ? 'Aufnahme anhören und sichern' : 'Aufnahme ansehen und sichern', '',
-        spieler, sichern,
-        h('p', { class: 'grau' }, u.typ === 'ton' ? 'Im Teilen-Menü „In Dateien sichern“ wählen.' : 'Im Teilen-Menü „Video sichern“ wählen. Das Video liegt dann in der Fotos-App.'),
-        info),
-      h('button', { class: 'breit', onclick: () => geheZu('#/') }, 'Zum Start'),
-      h('button', { class: 'breit leise', onclick: loeschen }, '🗑 Übung und Aufnahme löschen'));
+      u.status !== 'fertig' ? h('div', { class: 'stapel' }, zeitKlappe(u)) : null,
+      u.ohneAufnahme ? null : aufnahmeBox);
     const datei = await aufnahmeDatei(u);
     if (!aktiv) return;
-    if (!datei) { spieler.remove(); sichern.remove(); info.textContent = 'Zu dieser Übung ist keine Aufnahme gespeichert.'; return; }
+    if (!datei) { fuelle(aufnahmeBox, h('h2', {}, 'Aufnahme'), h('p', { class: 'grau' }, 'Zu dieser Übung ist keine Aufnahme gespeichert.')); return; }
     url = URL.createObjectURL(datei); spieler.src = url;
     info.textContent = 'Größe der Aufnahme: ' + mb(datei.size);
     sichern.disabled = false;

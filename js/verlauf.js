@@ -1,10 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, klapp } from './ui.js?v=2102';
-import { fmtZeit } from './store.js?v=2102';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2102';
-import { noteZahl, serie, aufgabeFuerMorgen } from './auswertung.js?v=2102';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2102';
-import { entwirren } from './auto.js?v=2102';
+import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue } from './ui.js?v=2104';
+import { fmtZeit } from './store.js?v=2104';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2104';
+import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2104';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2104';
+import { entwirren } from './auto.js?v=2104';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -13,8 +13,8 @@ const kurz = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit'
 
 // Eine Kurve je Messgröße: eine Linie, eine Achse. Antippen eines Punkts zeigt Wert und Datum.
 function kurve(titel, punkte, opt = {}) {
-  const name = h('span', {}, titel), wert = h('span', { class: 'wert' }, punkte.length ? punkte[punkte.length - 1].text : '–');
-  if (punkte.length < 2) return klapp(titel, 'gruppe', [name, wert], h('div', { class: 'hinweis' }, punkte.length ? 'Erst ein Wert (' + punkte[0].text + '). Die Kurve beginnt ab zwei Übungen.' : 'Noch keine Werte.'));
+  const kasten = (...x) => h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, h('span', {}, titel), h('span', { class: 'wert' }, punkte.length ? punkte[punkte.length - 1].text : '–')), x);
+  if (punkte.length < 2) return kasten(h('div', { class: 'hinweis' }, punkte.length ? 'Erst ein Wert (' + punkte[0].text + '). Die Kurve beginnt ab zwei Übungen.' : 'Noch keine Werte.'));
   punkte = punkte.slice(-30);
   const ys = punkte.map((p) => p.y), n = punkte.length;
   let lo = opt.min != null ? opt.min : Math.min(...ys), hi = opt.max != null ? opt.max : Math.max(...ys);
@@ -42,11 +42,11 @@ function kurve(titel, punkte, opt = {}) {
     bild.querySelectorAll('.punkt').forEach((c, k) => c.classList.toggle('gewaehlt', k === Number(i)));
     zeile.textContent = datumText(p.datum) + ': ' + p.text + (p.aufgabe ? ' · ' + p.aufgabe : '');
   });
-  return klapp(titel, 'gruppe', [name, wert], bild, opt.skala ? h('div', { class: 'skala' }, h('span', {}, opt.skala[0]), h('span', {}, opt.skala[1])) : null, zeile);
+  return kasten(bild, opt.skala ? h('div', { class: 'skala' }, h('span', {}, opt.skala[0]), h('span', {}, opt.skala[1])) : null, zeile);
 }
 
 // Sicherung: Verlauf als Datei abgeben und wieder einlesen (ohne Aufnahmen)
-function sicherungTeil(anzahl, neuLaden) {
+function sicherungTeil(anzahl) {
   const info = h('div', { class: 'hinweis' });
   const sag = (t, fehler) => { info.className = 'hinweis' + (fehler ? ' fehler' : ''); info.textContent = t; };
   // Die Datei muss fertig sein, bevor getippt wird: Das Teilen-Menü öffnet sich nur direkt im Antippen.
@@ -67,16 +67,20 @@ function sicherungTeil(anzahl, neuLaden) {
       location.reload();
     } catch (e) { sag(e.message, true); }
   });
-  return klapp('Sicherung', 'gruppe', h('span', {}, 'Sicherung'),
-    h('p', { class: 'grau' }, 'Die Sicherung enthält alle Übungen mit Messwerten, Transkript, Note und Feedback, dazu Einstellungen und eigene Listen. Nicht enthalten: Videos, Einzelbilder und der Schlüssel der automatischen Auswertung.'),
-    h('button', { class: 'breit', disabled: !anzahl, onclick: () => {
+  return {
+    el: [wahl, info],
+    exportieren() {
+      if (!anzahl) { sag('Es gibt noch keine Übungen zum Sichern.'); return; }
       if (!bereit) { sag('Die Sicherung wird noch vorbereitet. Bitte gleich noch einmal antippen.'); return; }
-      dateiAbgeben(bereit.name, bereit.text, 'application/json').then((wie) => { if (wie !== 'abgebrochen') sag('Sicherung mit ' + bereit.anzahl + (bereit.anzahl === 1 ? ' Übung' : ' Übungen') + (wie === 'geladen' ? ' geladen: ' : ' übergeben: ') + bereit.name); })
+      dateiAbgeben(bereit.name, bereit.text, 'application/json').then((wie) => { if (wie !== 'abgebrochen') sag('Sicherung mit ' + bereit.anzahl + (bereit.anzahl === 1 ? ' Übung' : ' Übungen') + (wie === 'geladen' ? ' geladen: ' : ' übergeben: ') + bereit.name + '. Nicht enthalten: Videos, Einzelbilder und der Schlüssel der automatischen Auswertung.'); })
         .catch((e) => sag('Die Sicherung hat nicht geklappt (' + (e.name || e.message) + ').', true));
-    } }, 'Verlauf exportieren'),
-    h('button', { class: 'breit', onclick: () => wahl.click() }, 'Verlauf einlesen'),
-    wahl, info);
+    },
+    einlesen() { wahl.click(); },
+  };
 }
+
+const KURVEN = [['note', 'Note'], ['fuell', 'Füllwörter'], ['tempo', 'Tempo'], ['zeit', 'Zeit'], ['blick', 'Blick']];
+let kurveWahl = 'note', alleZeigen = false;      // gilt, solange die App offen ist
 
 export function verlaufSeite(app) {
   let aktiv = true;
@@ -89,24 +93,32 @@ export function verlaufSeite(app) {
     const reihe = (wert, text) => fertig.map((u) => { const y = wert(u); return y == null || !isFinite(y) ? null : { y, text: text(u, y), datum: u.datum, aufgabe: u.aufgabe }; }).filter(Boolean);
     const s = serie(liste);
     const summe = liste.reduce((a, u) => a + (u.groesse || 0), 0);
+    const sich = sicherungTeil(liste.length);
+    const kopfZeile = kopf('Verlauf', { rechts: menue(() => [
+      { text: 'Verlauf exportieren', tun: sich.exportieren },
+      { text: 'Verlauf einlesen', tun: sich.einlesen }]) });
+    if (!liste.length) { fuelle(app, kopfZeile, sich.el, h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.'))); return; }
+    const baueKurve = {
+      note: () => kurve('Note', reihe((u) => (u.ergebnis ? noteZahl(u.ergebnis.note) : null), (u) => u.ergebnis.note), { obenKlein: true, spanne: 1, skala: ['oben: bessere Note', 'unten: schlechtere Note'] }),
+      fuell: () => kurve('Füllwörter je Minute', reihe((u) => (u.messung ? u.messung.sprache.fuellJeMinute : null), (u, y) => komma(y))),
+      tempo: () => kurve('Tempo', reihe((u) => (u.messung ? u.messung.sprache.tempo : null), (u, y) => y + ' Wörter/Min.')),
+      zeit: () => kurve('Zeitabweichung', reihe((u) => Math.round((u.ist - u.soll) / u.soll * 100), (u, y) => (y > 0 ? '+' : '') + y + ' %')),
+      blick: () => kurve('Blick zur Kamera', reihe((u) => (u.koerper && u.koerper.blick != null ? u.koerper.blick : null), (u, y) => y + ' %'), { min: 0, max: 100 }),
+    };
+    const kurvenBox = h('div', {});
+    const zeigeKurve = () => fuelle(kurvenBox, (baueKurve[kurveWahl] || baueKurve.note)());
+    zeigeKurve();
     fuelle(app,
-      kopf('Verlauf'),
-      liste.length ? h('p', {}, s.tage ? s.tage + (s.tage === 1 ? ' Tag' : ' Tage') + ' in Folge geübt' + (s.heute ? '' : ' (heute noch offen)') : 'Heute noch nicht geübt') : null,
-      liste.length ? [
-        h('h2', {}, 'Kurven'),
-        kurve('Note', reihe((u) => (u.ergebnis ? noteZahl(u.ergebnis.note) : null), (u) => u.ergebnis.note), { obenKlein: true, spanne: 1, skala: ['oben: bessere Note', 'unten: schlechtere Note'] }),
-        kurve('Füllwörter je Minute', reihe((u) => (u.messung ? u.messung.sprache.fuellJeMinute : null), (u, y) => komma(y))),
-        kurve('Tempo', reihe((u) => (u.messung ? u.messung.sprache.tempo : null), (u, y) => y + ' Wörter/Min.')),
-        kurve('Zeitabweichung', reihe((u) => Math.round((u.ist - u.soll) / u.soll * 100), (u, y) => (y > 0 ? '+' : '') + y + ' %')),
-        kurve('Blick zur Kamera', reihe((u) => (u.koerper && u.koerper.blick != null ? u.koerper.blick : null), (u, y) => y + ' %'), { min: 0, max: 100 }),
-      ] : null,
-      liste.length ? klapp('Übungen', 'frei', [h('span', {}, 'Übungen'), h('span', { class: 'wert' }, String(liste.length))], uebungsListe(liste))
-        : h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.')),
-      liste.length ? h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '. Antippen öffnet eine Übung. Der Papierkorb löscht eine einzelne Übung, „Mehrere auswählen“ löscht mehrere auf einmal.') : null);
+      kopfZeile,
+      h('div', { class: 'serieKarte' }, h('b', {}, s.tage ? s.tage + (s.tage === 1 ? ' Tag' : ' Tage') + ' in Folge geübt' : 'Heute noch nicht geübt'), s.tage ? h('span', {}, s.heute ? 'Heute schon erledigt' : 'Heute noch offen') : null),
+      sich.el,
+      uebungsListe(liste),
+      h('h2', {}, 'Entwicklung'),
+      (() => { const c = chips(KURVEN, kurveWahl, (w) => { kurveWahl = w; zeigeKurve(); }).el; c.classList.add('klein'); return c; })(),
+      kurvenBox,
+      h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '.'));
 
-    app.append(sicherungTeil(liste.length));
-
-    // Liste der Übungen: einzeln löschen per Papierkorb oder mehrere ankreuzen und zusammen löschen
+    // Liste der Übungen: Antippen öffnet eine Übung. „Auswählen“ kreuzt eine oder mehrere zum Löschen an.
     function uebungsListe(liste) {
       const loesche = async (ids, frage) => {
         if (!confirm(frage)) return;
@@ -114,38 +126,39 @@ export function verlaufSeite(app) {
         auswahl = null;
         if (aktiv) lade();
       };
+      const titel = h('div', { class: 'listenKopf' });
       const leiste = h('div', { class: 'wahlLeiste' });
-      const zeilen = h('div', {});
+      const zeilen = h('div', { class: 'stapel' });
+      const KURZ = 5;
       function zeichne() {
         const n = auswahl ? auswahl.size : 0;
-        fuelle(leiste, !auswahl
-          ? h('button', { class: 'breit', onclick: () => { auswahl = new Set(); zeichne(); } }, 'Mehrere auswählen')
-          : [
-            h('div', { class: 'hinweis' }, 'Tippe die Übungen an, die du löschen willst.'),
-            h('div', { class: 'zwei' },
-              h('button', { class: 'breit', onclick: () => { auswahl = n === liste.length ? new Set() : new Set(liste.map((u) => u.id)); zeichne(); } }, n === liste.length ? 'Keine auswählen' : 'Alle auswählen'),
-              h('button', { class: 'breit', onclick: () => { auswahl = null; zeichne(); } }, 'Abbrechen')),
-            h('button', { class: 'breit rot', disabled: !n, onclick: () => loesche([...auswahl], n === 1 ? 'Diese Übung mit Aufnahme endgültig löschen?' : n + ' Übungen mit Aufnahmen endgültig löschen?') }, n ? '🗑 ' + n + (n === 1 ? ' Übung löschen' : ' Übungen löschen') : '🗑 Löschen'),
-          ]);
-        fuelle(zeilen, liste.map((u) => {
+        fuelle(titel, h('h2', {}, 'Übungen (' + liste.length + ')'),
+          h('button', { class: 'pille' + (auswahl ? ' an' : ''), onclick: () => { auswahl = auswahl ? null : new Set(); zeichne(); } }, auswahl ? 'Fertig' : 'Auswählen'));
+        fuelle(leiste, !auswahl ? null : [
+          h('div', { class: 'hinweis' }, 'Tippe die Übungen an, die du löschen willst.'),
+          h('div', { class: 'zwei' },
+            h('button', { class: 'breit', onclick: () => { auswahl = n === liste.length ? new Set() : new Set(liste.map((u) => u.id)); zeichne(); } }, n === liste.length ? 'Keine auswählen' : 'Alle auswählen'),
+            h('button', { class: 'breit rot', disabled: !n, onclick: () => loesche([...auswahl], n === 1 ? 'Diese Übung mit Aufnahme endgültig löschen?' : n + ' Übungen mit Aufnahmen endgültig löschen?') }, n ? n + ' löschen' : 'Löschen')),
+        ]);
+        const sichtbar = auswahl || alleZeigen ? liste : liste.slice(0, KURZ);
+        fuelle(zeilen, sichtbar.map((u) => {
           const an = auswahl && auswahl.has(u.id);
-          const inhalt = [
-            h('div', { class: 'e1', lang: 'de' }, h('span', {}, u.aufgabe), u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null),
-            // Nur das Nötigste: Datum, Dauer, Art. Alles Weitere steht in der geöffneten Übung.
-            h('div', { class: 'e2' }, [tag(u.datum), u.status === 'fertig' ? fmtZeit(u.ist) : 'nicht sauber beendet', MODUS[u.modus] || u.modus].join(' · ')),
-          ];
-          if (auswahl) return h('button', { class: 'eintrag wahl' + (an ? ' an' : ''), 'aria-pressed': String(!!an), onclick: () => { if (an) auswahl.delete(u.id); else auswahl.add(u.id); zeichne(); } },
-            h('span', { class: 'haken' }, an ? '✓' : ''), h('div', { class: 'eInhalt' }, inhalt));
-          return h('div', { class: 'eZeile' },
-            h('button', { class: 'eintrag', onclick: () => geheZu('#/uebung/' + u.id) }, inhalt),
-            h('button', { class: 'muell', 'aria-label': 'Übung löschen', onclick: () => loesche([u.id], '„' + u.aufgabe + '“ vom ' + datumText(u.datum) + ' mit Aufnahme endgültig löschen?') }, '🗑'));
-        }));
+          return h('button', { class: 'reihe eintrag' + (an ? ' an' : ''), 'aria-pressed': auswahl ? String(!!an) : null,
+            onclick: () => { if (!auswahl) { geheZu('#/uebung/' + u.id); return; } if (an) auswahl.delete(u.id); else auswahl.add(u.id); zeichne(); } },
+            auswahl ? h('span', { class: 'haken' }, an ? '✓' : '') : null,
+            h('span', { class: 'eInhalt' },
+              h('span', { class: 'e1', lang: 'de' }, u.aufgabe),
+              // Nur das Nötigste: Datum, Dauer, Art. Alles Weitere steht in der geöffneten Übung.
+              h('span', { class: 'e2' }, [tag(u.datum), u.status === 'fertig' ? fmtZeit(u.ist) : 'nicht sauber beendet', artName(u)].join(' · '))),
+            u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null,
+            auswahl ? null : h('span', { class: 'pfeil' }, '›'));
+        }), sichtbar.length < liste.length ? h('button', { class: 'reihe mehr', onclick: () => { alleZeigen = true; zeichne(); } }, 'Alle ' + liste.length + ' anzeigen') : null);
       }
       zeichne();
-      return [leiste, zeilen];
+      return [titel, leiste, zeilen];
     }
   }
-  lade().catch((e) => { if (aktiv) fuelle(app, kopf('Verlauf'), h('p', { class: 'hinweis fehler' }, 'Der Verlauf lässt sich nicht anzeigen: ' + e.message), sicherungTeil(0)); });
+  lade().catch((e) => { if (!aktiv) return; const sich = sicherungTeil(0); fuelle(app, kopf('Verlauf', { rechts: menue(() => [{ text: 'Verlauf einlesen', tun: sich.einlesen }]) }), h('p', { class: 'hinweis fehler' }, 'Der Verlauf lässt sich nicht anzeigen: ' + e.message), sich.el); });
   return () => { aktiv = false; };
 }
 

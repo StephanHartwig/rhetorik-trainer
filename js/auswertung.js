@@ -1,7 +1,11 @@
 // Auswertungspaket für den Coach bauen, Ergebniscode (RT1|…) lesen, Serie der Übungstage zählen.
-import { fmtZeit, tagSchluessel } from './store.js?v=2102';
+import { fmtZeit, tagSchluessel } from './store.js?v=2104';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
+const AUFBAU = { klassisch: 'klassisch', frei: 'frei', these: 'Überzeugungsrede', geschichte: 'Geschichte' };
+// Name der Übungsart für Listen und Überschriften
+export const artName = (u) => (u.modus === 'rede' && u.aufbau === 'these' ? 'Überzeugungsrede' : u.modus === 'rede' && u.aufbau === 'geschichte' ? 'Geschichte' : MODUS[u.modus] || u.modus);
+export const aufbauName = (u) => AUFBAU[u.aufbau] || u.aufbau || '';
 const komma = (x) => String(x).replace('.', ',');
 const vz = (x) => (x > 0 ? '+' : x < 0 ? '−' : '±') + Math.abs(x);
 
@@ -13,7 +17,8 @@ export function paketText(u, opt = {}) {
   z.push('RHETORIK-TRAINER · AUSWERTUNGSPAKET');
   z.push('Modus: ' + (MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''));
   z.push('Aufgabe: ' + u.aufgabe);
-  if (u.modus === 'rede') z.push('Aufbau: ' + u.aufbau);
+  if (u.modus === 'rede') z.push('Aufbau: ' + aufbauName(u));
+  if (u.einstieg) z.push('Einstieg (von der App vorgegeben): ' + u.einstieg);
   z.push('Bildausschnitt: ' + (u.typ === 'ton' ? 'nur Ton' : u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'nah'));
   z.push('Zeit: Soll ' + fmtZeit(u.soll) + ' · Ist ' + fmtZeit(u.ist) + ' · Abweichung ' + vz(d) + ' s (' + vz(p) + ' %)');
 
@@ -64,6 +69,8 @@ export function paketText(u, opt = {}) {
   }
   // Auflösung: Bei den kurzen Übungen will Stephan sehen, wie er es hätte sagen können – in drei Varianten.
   if (opt.ohneWunsch) return z.join('\n');
+  if (u.aufbau === 'these') z.push('', 'MASSSTAB ÜBERZEUGUNGSREDE', 'Die Aufgabe ist eine These, die verteidigt wird. Prüfe das ganze Gerüst: den vorgegebenen Einstieg, drei verschieden gestützte Argumente, ein Was-wäre-wenn-Bild für den Fall, dass niemand handelt, die Wiederholung der drei Punkte, eine klare Handlungsaufforderung und danach einen gesetzten Schlusspunkt. Nenne die Stelle, an der der vorgegebene Einstieg umgesetzt ist, oder sag, dass er fehlt.');
+  if (u.aufbau === 'geschichte') z.push('', 'MASSSTAB GESCHICHTE', 'Die Aufgabe ist eine persönliche Geschichte in 60 Sekunden. Maßstab: ein einziges Erlebnis, Einstieg mitten in der Szene mit Ort und Zeit, Gegenwartsform, ein Wendepunkt, ein Schlusssatz mit der Lehre daraus. Das Gerüst mit drei Argumenten gilt hier nicht.');
   if (u.modus === 'schlag') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt einer Musterantwort eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diese Aussage, jede mit einer anderen Technik. Nenne zu jeder Variante die Technik und schreib die Antwort wörtlich aus, höchstens drei Sätze.');
   if (u.modus === 'einwand') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt eines einzelnen alternativen Bildes eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diesen Einwand, jede mit einem bildhaften Vergleich aus einer anderen Welt und mit der Brücke „Und genauso ist es mit …“. Schreib jede Antwort wörtlich aus, höchstens drei Sätze.');
   return z.join('\n');

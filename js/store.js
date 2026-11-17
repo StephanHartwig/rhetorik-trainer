@@ -8,7 +8,8 @@ export const STANDARD = {
   antwortSchlag: 30,    // Sekunden, Schlagfertigkeit
   antwortEinwand: 60,   // Sekunden, Einwand
   signal: 30,           // Sekunden vor Schluss, 0 = aus
-  aufbau: 'klassisch',  // 'klassisch' oder 'frei'
+  aufbau: 'klassisch',  // 'klassisch' oder 'frei' (gilt für die Rede über einen Begriff)
+  redeArt: 'begriff',   // 'begriff', 'these' (Überzeugungsrede) oder 'geschichte' (60 Sekunden)
   fachAnteil: 33,       // Prozent Fachbegriffe
   ausschnitt: 'nah',    // 'nah' oder 'ganz', letzte Wahl
   transkript: 'mittel', // 'mittel' (schnell) oder 'gross' (genau)
@@ -22,7 +23,7 @@ export const GRENZEN = {
   fachAnteil: [0, 100],
 };
 
-const ERLAUBT = { signal: [0, 10, 30, 60], aufbau: ['klassisch', 'frei'], ausschnitt: ['nah', 'ganz'], transkript: ['mittel', 'gross'] };
+const ERLAUBT = { signal: [0, 10, 30, 60], aufbau: ['klassisch', 'frei'], redeArt: ['begriff', 'these', 'geschichte'], ausschnitt: ['nah', 'ganz'], transkript: ['mittel', 'gross'] };
 
 function pruefen(e) {
   const out = { ...STANDARD };

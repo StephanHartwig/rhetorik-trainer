@@ -1,18 +1,19 @@
 // Ergebnisseite, Teil „Auswertung“: automatisch über die Anthropic-Schnittstelle oder von Hand über die Claude-App.
-import { h, fuelle, geheZu, klappe } from './ui.js?v=2102';
-import { fmtZeit } from './store.js?v=2102';
-import { paketText, codeLesen } from './auswertung.js?v=2102';
-import { bilderLaden, uebungSpeichern } from './db.js?v=2102';
-import { md } from './md.js?v=2102';
-import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2102';
-import { wachAn, wachAus } from './geraet.js?v=2102';
+import { h, fuelle, geheZu, klappe } from './ui.js?v=2104';
+import { fmtZeit } from './store.js?v=2104';
+import { paketText, codeLesen } from './auswertung.js?v=2104';
+import { bilderLaden, uebungSpeichern } from './db.js?v=2104';
+import { md } from './md.js?v=2104';
+import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2104';
+import { wachAn, wachAus } from './geraet.js?v=2104';
 
 const PUNKT = { 1: 'erfüllt', 0.5: 'teilweise', 0: 'fehlt' };
 const dollar = (x) => (x < 0.01 ? 'unter 0,01' : x.toFixed(2).replace('.', ',')) + ' US-Dollar';
 
-export function coachTeil(u) {
+// beiNeu: wird nach jedem Zeichnen gerufen (die Ergebnisseite zeigt damit den Stand der drei Schritte).
+export function coachTeil(u, beiNeu) {
   const box = h('div', {});
-  let blobs = [], dateien = [], frisch = false;
+  let blobs = [], dateien = [], nochmal = false;      // nochmal: „Noch einmal auswerten“ wurde im Menü gewählt
   // Die Bilder müssen schon bereitliegen, wenn getippt wird: Das Teilen-Menü öffnet sich nur direkt im Antippen.
   if (u.bilder && u.bilder.length) bilderLaden(u.id).then((l) => {
     blobs = l.slice(0, u.bilder.length);
@@ -36,7 +37,7 @@ export function coachTeil(u) {
         u.feedback = r.text.slice(0, 30000);
         u.auswertung = { modell: r.modell, kosten: r.kosten, ohneCode: !e, abgeschnitten: !!r.abgeschnitten };
         await uebungSpeichern(u);
-        frisch = true; zeichne();
+        nochmal = false; zeichne();
       } catch (err) { sag('Die automatische Auswertung hat nicht geklappt: ' + err.message, true); autoKnopf.disabled = false; }
       wachAus();
     } }, u.feedback ? 'Noch einmal automatisch auswerten' : 'Automatisch auswerten');
@@ -72,7 +73,7 @@ export function coachTeil(u) {
       u.feedback = mitText ? roh.slice(0, 30000) : '';
       u.auswertung = null;
       await uebungSpeichern(u);
-      zeichne();
+      nochmal = false; zeichne();
       return true;
     }
     function zeigeFeld() {
@@ -97,7 +98,6 @@ export function coachTeil(u) {
     const zeile = (x, y) => h('tr', {}, h('td', {}, x), h('td', {}, y));
     const feedback = u.feedback ? h('details', {}, h('summary', {}, 'Feedback des Coachs'), h('div', { class: 'feedback md', lang: 'de' }, md(entwirren(u.feedback)))) : null;
     if (feedback) feedback.open = true;       // Die Bewertung ist das Wichtigste: sie steht offen da
-    frisch = false;
     fuelle(box,
       e || u.feedback ? h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Bewertung des Coachs'),
         e ? h('div', { class: 'noteGross' }, h('span', {}, 'Note'), e.note) : null,
@@ -107,7 +107,7 @@ export function coachTeil(u) {
         a && a.abgeschnitten ? h('div', { class: 'hinweis' }, 'Die Antwort wurde wegen ihrer Länge abgeschnitten.') : null,
         feedback,
         a ? h('div', { class: 'hinweis' }, 'Automatisch ausgewertet mit ' + a.modell + '. Kosten dieser Auswertung: etwa ' + dollar(a.kosten) + '.') : null) : null,
-      (e || u.feedback ? (...x) => klappe('auswerten', 'Noch einmal auswerten', '', x) : (...x) => h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Auswertung'), x))(
+      (e || u.feedback ? (...x) => { const k = klappe('auswerten', 'Noch einmal auswerten', '', x); k.classList.add('nochmalBox'); k.hidden = !nochmal; k.open = true; return k; } : (...x) => h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Auswertung'), x))(
         bereit ? null : h('div', { class: 'hinweis' }, 'Erst „Messwerte berechnen“, dann auswerten lassen.'),
         auto.bereit ? [
           autoKnopf,
@@ -118,8 +118,11 @@ export function coachTeil(u) {
           vonHand, info,
           h('button', { class: 'breit leise', onclick: () => geheZu('#/auto') }, 'Automatische Auswertung einrichten'),
         ]));
+    if (beiNeu) beiNeu();
   }
   zeichne();
   box.neu = zeichne;
+  // Aus dem Menü der Ergebnisseite: den Bereich „Noch einmal auswerten“ zeigen
+  box.nochmal = () => { nochmal = true; zeichne(); const k = box.querySelector('.nochmalBox'); if (k) k.scrollIntoView({ block: 'center' }); };
   return box;
 }

@@ -1,11 +1,11 @@
 // Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2102';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2102';
-import { ziehe } from './begriffe.js?v=2102';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=2102';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2102';
-import * as G from './geraet.js?v=2102';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2104';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2104';
+import { ziehe, zieheAus } from './begriffe.js?v=2104';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=2104';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2104';
+import * as G from './geraet.js?v=2104';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
@@ -17,11 +17,22 @@ const ART = {
   einwand: { titel: 'Einwand', tun: 'Antworte mit einem bildhaften Vergleich.', knopf: 'Einwand zeigen', satz: 'Der Einwand erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte mit einem bildhaften Vergleich.' },
 };
 
+// Die Stegreifrede gibt es in drei Arten: über einen Begriff, als Überzeugungsrede zu einer These, als Geschichte in 60 Sekunden.
+const REDEART = {
+  begriff: ART.rede,
+  these: { titel: 'Überzeugungsrede', tun: 'Überzeuge deine Zuhörer von dieser These.', knopf: 'These zeigen', satz: 'Du bekommst eine These und eine Art des Einstiegs. Aufbau: Einstieg, drei Argumente, was passiert, wenn niemand handelt, Wiederholung, Aufforderung, Schlusspunkt.' },
+  geschichte: { titel: 'Geschichte in 60 Sekunden', tun: 'Erzähle dazu ein eigenes Erlebnis.', knopf: 'Thema zeigen', satz: 'Du bekommst einen Anlass und erzählst ein eigenes Erlebnis: mitten in der Szene beginnen, ein Wendepunkt, ein Schlusssatz. Die Zeit ist fest eine Minute.' },
+};
+const GESCHICHTE_SEK = 60;
+
 // opt.modus: 'rede' | 'schlag' | 'einwand'
+// opt.redeArt: legt die Art der Rede fest (Tagesprogramm); sonst gilt die Einstellung.
 // opt.heute: { nr, aufgabe(), fertig(meta) } für das Tagesprogramm – dort bleibt verdeckt, welche Übung kommt.
 export function redeAblauf(app, E, merke, opt = {}) {
-  const modus = opt.modus || 'rede', art = ART[modus], heute = opt.heute || null;
-  const sollZeit = () => (modus === 'rede' ? E.redezeit : modus === 'schlag' ? E.antwortSchlag : E.antwortEinwand);
+  const modus = opt.modus || 'rede', heute = opt.heute || null;
+  const redeArt = () => (modus !== 'rede' ? '' : REDEART[opt.redeArt] ? opt.redeArt : E.redeArt);
+  const art = () => (modus === 'rede' ? REDEART[redeArt()] : ART[modus]);
+  const sollZeit = () => (modus !== 'rede' ? (modus === 'schlag' ? E.antwortSchlag : E.antwortEinwand) : redeArt() === 'geschichte' ? GESCHICHTE_SEK : E.redezeit);
   const vorZeit = modus === 'rede' ? E.vorbereitung : 0;
   let aktiv = true, takt = null, aufnahme = null, messer = null, strom = null, pose = null, meta = null, ton = null;
   const video = h('video', { class: 'vorschau', playsinline: true, autoplay: true });
@@ -43,7 +54,7 @@ export function redeAblauf(app, E, merke, opt = {}) {
     const zeit = h('span', { class: 'wert' }, fmtZeit(sollZeit()));
     const zeitHinweis = h('div', { class: 'hinweis' });
     const ausHinweis = h('div', { class: 'hinweis' });
-    const knopf = h('button', { class: 'gross', disabled: true, onclick: begriffZeigen }, heute ? 'Aufgabe ' + heute.nr + ' zeigen' : art.knopf);
+    const knopf = h('button', { class: 'gross', disabled: true, onclick: begriffZeigen }, heute ? 'Aufgabe ' + heute.nr + ' zeigen' : art().knopf);
     let kameraBereit = false, platzReicht = true;
     const knopfStand = () => { knopf.disabled = !(kameraBereit && platzReicht); };
 
@@ -71,21 +82,31 @@ export function redeAblauf(app, E, merke, opt = {}) {
     }
     const ausChips = chips([['nah', 'Nah (Gesicht)'], ['ganz', 'Ganzkörper']], E.ausschnitt, (v) => { merke('ausschnitt', v); hinweise(); });
     const zeitChips = chips(REDEZEITEN, E.redezeit, (v) => { merke('redezeit', v); hinweise(); });
+    // Art der Rede: wechselt Knopf, Erklärung und die Zeitwahl
+    const satz = h('p', { class: 'grau' });
+    const zeitWahl = h('div', {}, h('div', { class: 'hinweis' }, 'Minuten'), zeitChips.el);
+    const artStand = () => {
+      if (heute) { satz.textContent = 'Was kommt, siehst du erst nach dem Antippen. Kein Tauschen, kein Überspringen.'; return; }
+      knopf.textContent = art().knopf; satz.textContent = art().satz;
+      zeitWahl.hidden = redeArt() === 'geschichte';
+    };
+    const artChips = chips([['begriff', 'Begriff'], ['these', 'Überzeugung'], ['geschichte', 'Geschichte']], E.redeArt, (v) => { merke('redeArt', v); artStand(); hinweise(); });
 
     fuelle(app, 
-      kopf(heute ? 'Heute üben' : art.titel),
+      kopf(heute ? 'Heute üben' : ART[modus].titel),
       heute ? h('div', { class: 'begriffTitel' }, 'Aufgabe ' + heute.nr + ' von 2') : null,
       heute && heute.nr === 2 ? h('p', {}, 'Aufgabe 1 ist geschafft. Die Auswertung machst du nach beiden Aufgaben.') : null,
       video, meldung,
       gruppe('Bildausschnitt', null, ausChips.el, ausHinweis),
+      heute || modus !== 'rede' ? null : gruppe('Art der Rede', null, artChips.el),
       heute ? null : modus === 'rede'
-        ? gruppe('Redezeit', zeit, h('div', { class: 'hinweis' }, 'Minuten'), zeitChips.el, zeitHinweis)
+        ? gruppe('Redezeit', zeit, zeitWahl, zeitHinweis)
         : gruppe('Antwortzeit', zeit, zeitHinweis),
       platz,
       h('p', { class: 'warn' }, 'Stromsparmodus aus? Das Batterie-Symbol darf nicht gelb sein.'),
-      h('p', { class: 'grau' }, heute ? 'Was kommt, siehst du erst nach dem Antippen. Kein Tauschen, kein Überspringen.' : art.satz),
+      satz,
       h('div', { class: 'fest' }, knopf));
-    hinweise();
+    artStand(); hinweise();
     G.kameraAn().then((s) => {
       if (!aktiv) { G.kameraAus(); return; }
       strom = s; video.srcObject = s; video.play().catch(() => {});
@@ -98,14 +119,14 @@ export function redeAblauf(app, E, merke, opt = {}) {
     G.tonAn(); G.wachAn();                       // beides muss direkt im Antippen starten
     const ganz = E.ausschnitt === 'ganz';
     const soll = sollZeit(), nurTon = soll > 1200;
-    const b = heute ? heute.aufgabe() : modus === 'rede' ? ziehe(E.fachAnteil) : modus === 'schlag' ? zieheImpuls() : zieheEinwand();
+    const b = heute ? heute.aufgabe() : modus === 'rede' ? (redeArt() === 'begriff' ? ziehe(E.fachAnteil) : zieheAus(redeArt())) : modus === 'schlag' ? zieheImpuls() : zieheEinwand();
     if (ganz) G.poseLaden().then((p) => { pose = p; }).catch(() => { handInfo.textContent = 'Handzeichen nicht verfügbar. Beenden durch Schweigen oder Antippen.'; });
     try { messer = G.pegelMesser(strom); } catch (e) { messer = null; }
     G.pcmVorbereiten().catch(() => {});       // Mitschnitt der Tonspur schon jetzt laden
 
     const status = h('div', { class: 'status' }, vorZeit ? 'Vorbereitung' : '');
     // Was ist das für eine Übung, und was ist zu tun? Wichtig vor allem im Tagesprogramm, wo es vorher verdeckt ist.
-    const artZeile = h('div', { class: 'artZeile' }, h('b', {}, art.titel), art.tun);
+    const artZeile = h('div', { class: 'artZeile' }, h('b', {}, art().titel), art().tun, b.einstieg ? h('span', { class: 'einstieg' }, 'Beginne mit: ' + b.einstieg) : null);
     const uhr = h('div', { class: 'uhr' });
     const begriff = h('div', { class: 'begriff', lang: 'de' });
     const frageBox = h('div', { class: 'frage', hidden: true });
@@ -138,7 +159,7 @@ export function redeAblauf(app, E, merke, opt = {}) {
       proben.length = 0;
       const jetzt = new Date();
       meta = { id: String(jetzt.getTime()), datum: jetzt.toISOString(), tag: tagSchluessel(jetzt), modus, aufgabe: b.text, kategorie: b.kategorie || '', art: b.art || '',
-               aufbau: modus === 'rede' ? E.aufbau : '', heute: heute ? heute.nr : 0, ausschnitt: E.ausschnitt, soll, ist: 0, typ: nurTon ? 'ton' : 'video', status: 'läuft', groesse: 0 };
+               aufbau: modus === 'rede' ? (redeArt() === 'begriff' ? E.aufbau : redeArt()) : '', einstieg: b.einstieg || '', heute: heute ? heute.nr : 0, ausschnitt: E.ausschnitt, soll, ist: 0, typ: nurTon ? 'ton' : 'video', status: 'läuft', groesse: 0 };
       uebungSpeichern(meta).catch(() => {});
       try { aufnahme = G.aufnahmeStarten(strom, meta.id, nurTon); }
       catch (e) { status.textContent = 'Die Aufnahme lässt sich nicht starten.'; clearInterval(takt); return; }

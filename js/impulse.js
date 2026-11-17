@@ -1,6 +1,6 @@
 // Impulse für die Schlagfertigkeit und Einwände ziehen: zufällig, ohne Wiederholung, bis ein Vorrat durch ist.
 // Die eingebauten Listen werden nirgends angezeigt. Nur eigene Einträge sind einsehbar.
-import { IMPULSE } from './impulse-daten.js?v=2102';
+import { IMPULSE } from './impulse-daten.js?v=2104';
 
 const K_VERBRAUCHT = 'rt.impulse.verbraucht';
 const K_EIGENE = { angriff: 'rt.impulse.eigene', einwand: 'rt.einwand.eigene' };

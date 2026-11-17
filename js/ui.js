@@ -26,6 +26,20 @@ export function kopf(titel, { zurueck = true, ziel = '#/', rechts = null } = {})
     rechts || h('div', { class: 'platz' }));
 }
 
+// Menü „···“ oben rechts für selten gebrauchte Aktionen. eintraege() liefert [{ text, tun, rot }], leere Einträge sind erlaubt.
+export function menue(eintraege) {
+  const liste = h('div', { class: 'menueListe', hidden: true });
+  const zu = () => { liste.hidden = true; document.removeEventListener('pointerdown', aussen, true); };
+  const aussen = (e) => { if (!huelle.contains(e.target)) zu(); };
+  const knopf = h('button', { class: 'rad', 'aria-label': 'Weitere Aktionen', onclick: () => {
+    if (!liste.hidden) { zu(); return; }
+    fuelle(liste, eintraege().filter(Boolean).map((e) => h('button', { class: e.rot ? 'rot' : '', onclick: () => { zu(); e.tun(); } }, e.text)));
+    liste.hidden = false; document.addEventListener('pointerdown', aussen, true);
+  } }, '···');
+  const huelle = h('div', { class: 'menue' }, knopf, liste);
+  return huelle;
+}
+
 // Auswahlknöpfe, von denen genau einer gedrückt ist
 export function chips(optionen, aktuell, beiWahl) {
   const knoepfe = optionen.map(([wert, text]) => h('button', {

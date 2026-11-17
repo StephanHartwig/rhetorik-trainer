@@ -1,29 +1,31 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2102';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=2102';
-import { redeAblauf } from './rede.js?v=2102';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=2102';
-import { verlaufSeite, startInfo } from './verlauf.js?v=2102';
-import { autoSeite } from './auto-seite.js?v=2102';
-import { lauf, laufend } from './messlauf.js?v=2102';
-import { autoStand } from './auto.js?v=2102';
-import { eigeneBegriffe } from './begriffe.js?v=2102';
-import { eigene } from './impulse.js?v=2102';
-import { heuteSeite, heuteStand } from './heute.js?v=2102';
-import { stimmeSeite } from './stimme.js?v=2102';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2104';
+import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=2104';
+import { redeAblauf } from './rede.js?v=2104';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=2104';
+import { verlaufSeite, startInfo } from './verlauf.js?v=2104';
+import { autoSeite } from './auto-seite.js?v=2104';
+import { lauf, laufend } from './messlauf.js?v=2104';
+import { autoStand } from './auto.js?v=2104';
+import { eigeneBegriffe } from './begriffe.js?v=2104';
+import { eigene } from './impulse.js?v=2104';
+import { heuteSeite, heuteStand } from './heute.js?v=2104';
+import { stimmeSeite } from './stimme.js?v=2104';
+import { merkSeite } from './merk.js?v=2104';
 
-const VERSION = 2102;
+const VERSION = 2104;
 // Ab 20.1 steckt die Unterstufe in der Zahl: 2001 wird als „20.1“ angezeigt.
 const fassungText = (n) => (n >= 1000 ? Math.floor(n / 100) + '.' + (n % 100) : String(n));
 const app = document.getElementById('app');
 let E = laden();
-const merke = (k, v) => { E[k] = v; E = speichern(E); };
+// E bleibt dasselbe Objekt: Die laufende Seite (zum Beispiel die Einrichtung einer Rede) sieht so jede weitere Änderung.
+const merke = (k, v) => { E[k] = v; Object.assign(E, speichern(E)); };
 
 // ---------- neue Fassung online? ----------
 let neueFassung = null;
 fetch('index.html?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => {
   const m = t.match(/app\.js\?v=(\d+)/);
-  if (m && Number(m[1]) !== VERSION) { neueFassung = m[1]; if (!/^#\/(rede|schlag|einwand|heute|stimme)/.test(location.hash)) zeigen(); }
+  if (m && Number(m[1]) !== VERSION) { neueFassung = m[1]; if (!/^#\/(rede|schlag|einwand|heute|stimme|ruhe)/.test(location.hash)) zeigen(); }
 }).catch(() => {});
 function updateKnopf() {
   if (!neueFassung) return null;
@@ -39,14 +41,16 @@ function start() {
     kopf('Rhetorik-Trainer', { zurueck: false, rechts: h('button', { class: 'rad', 'aria-label': 'Einstellungen', onclick: () => geheZu('#/einstellungen') }, '⚙︎') }),
     updateKnopf(),
     h('button', { class: 'gross' + (n === 2 ? ' erledigt' : ''), onclick: () => geheZu('#/heute') }, n === 2 ? 'Heute geübt ✓' : 'Heute üben',
-      h('small', {}, n === 2 ? 'Beide Aufgaben erledigt · antippen zum Auswerten' : n === 1 ? 'Aufgabe 1 erledigt · weiter mit Aufgabe 2 von 2' : '2 Aufgaben · die Reihenfolge überrascht dich')),
+      h('small', {}, n === 2 ? 'Beide Aufgaben erledigt · antippen zum Auswerten' : n === 1 ? 'Aufgabe 1 erledigt · weiter mit Aufgabe 2 von 2' : '2 Aufgaben · Art und Reihenfolge überraschen dich')),
     info,
     h('h2', {}, 'Freies Üben'),
     h('div', { class: 'raster' },
       h('button', { class: 'kachel', onclick: () => geheZu('#/rede') }, 'Stegreifrede'),
       h('button', { class: 'kachel', onclick: () => geheZu('#/schlag') }, 'Schlagfertigkeit'),
       h('button', { class: 'kachel', onclick: () => geheZu('#/einwand') }, 'Einwand'),
-      h('button', { class: 'kachel', onclick: () => geheZu('#/stimme') }, 'Stimme aufwärmen')),
+      h('button', { class: 'kachel', onclick: () => geheZu('#/stimme') }, 'Stimme aufwärmen'),
+      h('button', { class: 'kachel', onclick: () => geheZu('#/ruhe') }, 'Aufregung dämpfen'),
+      h('button', { class: 'kachel', onclick: () => geheZu('#/merk') }, 'Merkzettel')),
     h('button', { class: 'breit', onclick: () => geheZu('#/verlauf') }, 'Verlauf'),
     h('div', { class: 'fuss warn' }, 'Vor dem Üben: Stromsparmodus aus (Batterie-Symbol nicht gelb).'),
   ];
@@ -99,7 +103,7 @@ function einstellungen() {
     gruppe('Antwortzeit Einwand', einw.anzeige, einw.zeile),
     gruppe('Signalton vor Schluss', null, signalChips.el, signalHinweis),
     gruppe('Aufbau der Rede', null, aufbauChips.el,
-      h('div', { class: 'hinweis' }, 'Klassisch: Einstieg, drei Argumente, Wiederholung, Aufforderung, Schluss. Frei: eigener Aufbau, der Coach wertet das nicht ab.')),
+      h('div', { class: 'hinweis' }, 'Gilt für die Rede über einen Begriff. Klassisch: Einstieg, drei Argumente, Wiederholung, Aufforderung, Schluss. Frei: eigener Aufbau, der Coach wertet das nicht ab.')),
     gruppe('Anteil Fachbegriffe', fach.anzeige, fach.zeile),
     gruppe('Transkript', null, transChips.el,
       h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht etwa 5 Minuten und lädt einmalig rund 250 MB.')),
@@ -132,7 +136,8 @@ function zeigen() {
   if (pfad === 'verlauf') { aufraeumen = verlaufSeite(app); return; }
   if (pfad === 'schlag' || pfad === 'einwand') { aufraeumen = redeAblauf(app, E, merke, { modus: pfad }); return; }
   if (pfad === 'heute') { aufraeumen = heuteSeite(app, E, merke, zeigen); return; }
-  if (pfad === 'stimme') { aufraeumen = stimmeSeite(app); return; }
+  if (pfad === 'stimme' || pfad === 'ruhe') { aufraeumen = stimmeSeite(app, pfad); return; }
+  if (pfad === 'merk') { aufraeumen = merkSeite(app); return; }
   if (pfad === 'eigene') { aufraeumen = eigeneSeite(app); return; }
   if (pfad === 'eigene/angriff' || pfad === 'eigene/einwand') { aufraeumen = eigeneSeite(app, pfad.slice(7)); return; }
   if (pfad === 'auto') { aufraeumen = autoSeite(app); return; }

@@ -1,10 +1,12 @@
 // Begriffe ziehen: zufällig, ohne Wiederholung, bis ein Vorrat durch ist.
 // Die eingebaute Liste wird nirgends angezeigt. Nur eigene Begriffe sind einsehbar.
-import { BEGRIFFE } from './begriffe-daten.js?v=2102';
+import { BEGRIFFE } from './begriffe-daten.js?v=2104';
 
 const K_VERBRAUCHT = 'rt.begriffe.verbraucht';
 const K_EIGENE = 'rt.begriffe.eigene';
-export const KATEGORIEN = { fach: 'Fach', alltag: 'Alltag', abstrakt: 'Abstrakt', skurril: 'Skurril', unmoeglich: 'Unmöglich', eigen: 'Eigen' };
+export const KATEGORIEN = { fach: 'Fach', alltag: 'Alltag', abstrakt: 'Abstrakt', skurril: 'Skurril', unmoeglich: 'Unmöglich', eigen: 'Eigen', these: 'These', geschichte: 'Geschichte' };
+// Die neun Arten, eine Rede zu beginnen. Bei der Überzeugungsrede gibt die App eine davon vor.
+export const EINSTIEGE = ['sachlicher Einstieg', 'humorvoller Einstieg', 'Kompliment an die Zuhörer', 'Zitat', 'kurze Geschichte', 'rhetorische Frage', 'persönliches Erlebnis', 'aktuelles Ereignis', 'Provokation'];
 
 let vorrat;
 function liste() {
@@ -29,9 +31,26 @@ export function eigenenHinzufuegen(text) {
 }
 export function eigenenLoeschen(text) { schreib(K_EIGENE, eigeneBegriffe().filter((x) => x !== text)); }
 
+// Zieht aus einem Vorrat ohne Wiederholung, bis er durch ist.
+function nimm(kat, alle) {
+  const verbraucht = lies(K_VERBRAUCHT, {});
+  let weg = (Array.isArray(verbraucht[kat]) ? verbraucht[kat] : []).filter((t) => alle.includes(t));
+  if (weg.length >= alle.length) weg = [];           // Vorrat durch: von vorn
+  const frei = alle.filter((t) => !weg.includes(t));
+  const text = frei[Math.floor(Math.random() * frei.length)];
+  weg.push(text); verbraucht[kat] = weg; schreib(K_VERBRAUCHT, verbraucht);
+  return { text, kategorie: KATEGORIEN[kat] };
+}
+
+// These für die Überzeugungsrede (mit vorgegebener Art des Einstiegs) oder Erzählanlass für die Geschichte.
+export function zieheAus(kat) {
+  const b = nimm(kat, liste()[kat] || []);
+  if (kat === 'these') b.einstieg = EINSTIEGE[Math.floor(Math.random() * EINSTIEGE.length)];
+  return b;
+}
+
 export function ziehe(fachAnteil) {
   const v = liste(), eigene = eigeneBegriffe();
-  const verbraucht = lies(K_VERBRAUCHT, {});
   // Kategorie wählen: Fachanteil laut Einstellung, der Rest gleichmäßig verteilt.
   // Eigene Begriffe zählen wie eine weitere Rest-Kategorie, gewichtet nach ihrer Anzahl.
   let kat;
@@ -43,11 +62,5 @@ export function ziehe(fachAnteil) {
     kat = rest[rest.length - 1][0];
     for (const [name, gewicht] of rest) { if (z < gewicht) { kat = name; break; } z -= gewicht; }
   }
-  const alle = kat === 'eigen' ? eigene : v[kat];
-  let weg = (Array.isArray(verbraucht[kat]) ? verbraucht[kat] : []).filter((t) => alle.includes(t));
-  if (weg.length >= alle.length) weg = [];           // Vorrat durch: von vorn
-  const frei = alle.filter((t) => !weg.includes(t));
-  const text = frei[Math.floor(Math.random() * frei.length)];
-  weg.push(text); verbraucht[kat] = weg; schreib(K_VERBRAUCHT, verbraucht);
-  return { text, kategorie: KATEGORIEN[kat] };
+  return nimm(kat, kat === 'eigen' ? eigene : v[kat]);
 }
