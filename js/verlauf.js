@@ -1,10 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue } from './ui.js?v=2105';
-import { fmtZeit } from './store.js?v=2105';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2105';
-import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2105';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2105';
-import { entwirren } from './auto.js?v=2105';
+import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue } from './ui.js?v=2106';
+import { fmtZeit } from './store.js?v=2106';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2106';
+import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2106';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2106';
+import { entwirren } from './auto.js?v=2106';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -80,7 +80,7 @@ function sicherungTeil(anzahl) {
 }
 
 const KURVEN = [['note', 'Note'], ['fuell', 'Füllwörter'], ['tempo', 'Tempo'], ['zeit', 'Zeit'], ['blick', 'Blick']];
-let kurveWahl = 'note', alleZeigen = false, rubrik = 'alle';      // gilt, solange die App offen ist
+let kurveWahl = 'note', listeZu = false, rubrik = 'alle';      // gilt, solange die App offen ist
 const RUBRIKEN = ['Stegreifrede', 'Überzeugungsrede', 'Geschichte', 'Schlagfertigkeit', 'Einwand'];
 
 export function verlaufSeite(app) {
@@ -94,7 +94,7 @@ export function verlaufSeite(app) {
     const vorhanden = RUBRIKEN.filter((r) => gesamt.some((u) => artName(u) === r));
     if (!vorhanden.includes(rubrik)) rubrik = 'alle';
     const liste = rubrik === 'alle' ? gesamt : gesamt.filter((u) => artName(u) === rubrik);
-    const wahl = h('select', { class: 'auswahl', 'aria-label': 'Rubrik', onchange: () => { rubrik = wahl.value; auswahl = null; alleZeigen = false; lade(); } },
+    const wahl = h('select', { class: 'auswahl', 'aria-label': 'Rubrik', onchange: () => { rubrik = wahl.value; auswahl = null; lade(); } },
       h('option', { value: 'alle' }, 'Alle Übungen (' + gesamt.length + ')'),
       vorhanden.map((r) => h('option', { value: r }, r + ' (' + gesamt.filter((u) => artName(u) === r).length + ')')));
     wahl.value = rubrik;
@@ -138,20 +138,22 @@ export function verlaufSeite(app) {
       };
       const titel = h('div', { class: 'listenKopf' });
       const leiste = h('div', { class: 'wahlLeiste' });
-      const zeilen = h('div', { class: 'stapel' });
-      const KURZ = 5;
+      // Die Liste rollt in einem eigenen Kasten, damit „Entwicklung“ gleich darunter erreichbar bleibt.
+      const zeilen = h('div', { class: 'stapel rollListe' });
       function zeichne() {
         const n = auswahl ? auswahl.size : 0;
-        fuelle(titel, h('h2', {}, 'Übungen (' + liste.length + ')'),
-          h('button', { class: 'pille' + (auswahl ? ' an' : ''), onclick: () => { auswahl = auswahl ? null : new Set(); zeichne(); } }, auswahl ? 'Fertig' : 'Auswählen'));
+        const zu = listeZu && !auswahl;
+        zeilen.hidden = zu;
+        fuelle(titel, h('button', { class: 'klappKopf', 'aria-expanded': String(!zu), onclick: () => { listeZu = !zu; auswahl = null; zeichne(); } },
+            h('h2', {}, 'Übungen (' + liste.length + ')'), h('span', { class: 'winkel' + (zu ? '' : ' auf') }, '›')),
+          h('button', { class: 'pille' + (auswahl ? ' an' : ''), onclick: () => { auswahl = auswahl ? null : new Set(); listeZu = false; zeichne(); } }, auswahl ? 'Fertig' : 'Auswählen'));
         fuelle(leiste, !auswahl ? null : [
           h('div', { class: 'hinweis' }, 'Tippe die Übungen an, die du löschen willst.'),
           h('div', { class: 'zwei' },
             h('button', { class: 'breit', onclick: () => { auswahl = n === liste.length ? new Set() : new Set(liste.map((u) => u.id)); zeichne(); } }, n === liste.length ? 'Keine auswählen' : 'Alle auswählen'),
             h('button', { class: 'breit rot', disabled: !n, onclick: () => loesche([...auswahl], n === 1 ? 'Diese Übung mit Aufnahme endgültig löschen?' : n + ' Übungen mit Aufnahmen endgültig löschen?') }, n ? n + ' löschen' : 'Löschen')),
         ]);
-        const sichtbar = auswahl || alleZeigen ? liste : liste.slice(0, KURZ);
-        fuelle(zeilen, sichtbar.map((u) => {
+        fuelle(zeilen, liste.map((u) => {
           const an = auswahl && auswahl.has(u.id);
           return h('button', { class: 'reihe eintrag' + (an ? ' an' : ''), 'aria-pressed': auswahl ? String(!!an) : null,
             onclick: () => { if (!auswahl) { geheZu('#/uebung/' + u.id); return; } if (an) auswahl.delete(u.id); else auswahl.add(u.id); zeichne(); } },
@@ -162,7 +164,7 @@ export function verlaufSeite(app) {
               h('span', { class: 'e2' }, [tag(u.datum), u.status === 'fertig' ? fmtZeit(u.ist) : 'nicht sauber beendet', artName(u)].join(' · '))),
             u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null,
             auswahl ? null : h('span', { class: 'pfeil' }, '›'));
-        }), sichtbar.length < liste.length ? h('button', { class: 'reihe mehr', onclick: () => { alleZeigen = true; zeichne(); } }, 'Alle ' + liste.length + ' anzeigen') : null);
+        }));
       }
       zeichne();
       return [titel, leiste, zeilen];

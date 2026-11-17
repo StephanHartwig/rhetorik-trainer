@@ -300,3 +300,11 @@ details.klapp[open] > summary::before { content: none; }
 }
 .chips.klein { gap: 5px; }
 .chips.klein button { flex: 1 1 auto; padding: 6px 6px; font-size: 14px; }
+
+/* Verlauf: Übungsliste rollt in einem eigenen Kasten und lässt sich zuklappen */
+.stapel.rollListe { max-height: 236px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.stapel.rollListe[hidden] { display: none; }
+.klappKopf { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; text-align: left; }
+.klappKopf h2 { margin: 0 0 2px; }
+.klappKopf .winkel { color: var(--grau); font-size: 22px; line-height: 1; transition: transform .15s; }
+.klappKopf .winkel.auf { transform: rotate(90deg); }

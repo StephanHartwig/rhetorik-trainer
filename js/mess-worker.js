@@ -4,7 +4,7 @@
 import { pipeline, env } from '../lib/transformers/transformers.min.js';
 env.backends.onnx.wasm.wasmPaths = new URL('../lib/transformers/', import.meta.url).href;
 env.allowLocalModels = false;
-import { stimmAnalyse } from './analyse.js?v=2105';
+import { stimmAnalyse } from './analyse.js?v=2106';
 
 // Whisper erfindet bei Stille manchmal solche Sätze. Sie werden verworfen.
 const ERFUNDEN = /untertitel|amara\.org|vielen dank fürs zuschauen|bis zum nächsten mal|copyright|im auftrag des/i;
