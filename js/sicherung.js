@@ -1,7 +1,7 @@
 // Export für Klara (eine Übung als Markdown-Datei) und Sicherung des Verlaufs (alles außer den Aufnahmen als Datei).
-import { paketText } from './auswertung.js?v=2104';
-import { alleUebungen, uebungLaden, uebungSpeichern } from './db.js?v=2104';
-import { entwirren } from './auto.js?v=2104';
+import { paketText } from './auswertung.js?v=2105';
+import { alleUebungen, uebungLaden, uebungSpeichern } from './db.js?v=2105';
+import { entwirren } from './auto.js?v=2105';
 
 // Datei über das Teilen-Menü abgeben (AirDrop, Dateien). Geht das nicht, als Download.
 // Muss direkt im Antippen laufen, die Datei also vorher fertig sein.

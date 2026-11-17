@@ -1,10 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue } from './ui.js?v=2104';
-import { fmtZeit } from './store.js?v=2104';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2104';
-import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2104';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2104';
-import { entwirren } from './auto.js?v=2104';
+import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue } from './ui.js?v=2105';
+import { fmtZeit } from './store.js?v=2105';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2105';
+import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2105';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2105';
+import { entwirren } from './auto.js?v=2105';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -80,24 +80,33 @@ function sicherungTeil(anzahl) {
 }
 
 const KURVEN = [['note', 'Note'], ['fuell', 'Füllwörter'], ['tempo', 'Tempo'], ['zeit', 'Zeit'], ['blick', 'Blick']];
-let kurveWahl = 'note', alleZeigen = false;      // gilt, solange die App offen ist
+let kurveWahl = 'note', alleZeigen = false, rubrik = 'alle';      // gilt, solange die App offen ist
+const RUBRIKEN = ['Stegreifrede', 'Überzeugungsrede', 'Geschichte', 'Schlagfertigkeit', 'Einwand'];
 
 export function verlaufSeite(app) {
   let aktiv = true;
   fuelle(app, kopf('Verlauf'), h('p', { class: 'grau' }, 'Lade …'));
   let auswahl = null;                 // null = normale Liste, sonst die Menge der angekreuzten Übungen
   async function lade() {
-    const [liste, st] = await Promise.all([alleUebungen(), speicherStand()]);
+    const [gesamt, st] = await Promise.all([alleUebungen(), speicherStand()]);
     if (!aktiv) return;
+    // Rubrik: Liste und Kurven zeigen auf Wunsch nur eine Art von Übung.
+    const vorhanden = RUBRIKEN.filter((r) => gesamt.some((u) => artName(u) === r));
+    if (!vorhanden.includes(rubrik)) rubrik = 'alle';
+    const liste = rubrik === 'alle' ? gesamt : gesamt.filter((u) => artName(u) === rubrik);
+    const wahl = h('select', { class: 'auswahl', 'aria-label': 'Rubrik', onchange: () => { rubrik = wahl.value; auswahl = null; alleZeigen = false; lade(); } },
+      h('option', { value: 'alle' }, 'Alle Übungen (' + gesamt.length + ')'),
+      vorhanden.map((r) => h('option', { value: r }, r + ' (' + gesamt.filter((u) => artName(u) === r).length + ')')));
+    wahl.value = rubrik;
     const fertig = liste.filter((u) => u.status === 'fertig').reverse();          // älteste zuerst
     const reihe = (wert, text) => fertig.map((u) => { const y = wert(u); return y == null || !isFinite(y) ? null : { y, text: text(u, y), datum: u.datum, aufgabe: u.aufgabe }; }).filter(Boolean);
-    const s = serie(liste);
-    const summe = liste.reduce((a, u) => a + (u.groesse || 0), 0);
-    const sich = sicherungTeil(liste.length);
+    const s = serie(gesamt);
+    const summe = gesamt.reduce((a, u) => a + (u.groesse || 0), 0);
+    const sich = sicherungTeil(gesamt.length);
     const kopfZeile = kopf('Verlauf', { rechts: menue(() => [
       { text: 'Verlauf exportieren', tun: sich.exportieren },
       { text: 'Verlauf einlesen', tun: sich.einlesen }]) });
-    if (!liste.length) { fuelle(app, kopfZeile, sich.el, h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.'))); return; }
+    if (!gesamt.length) { fuelle(app, kopfZeile, sich.el, h('div', { class: 'mitte' }, h('div', { class: 'grau' }, 'Noch keine Übungen.'))); return; }
     const baueKurve = {
       note: () => kurve('Note', reihe((u) => (u.ergebnis ? noteZahl(u.ergebnis.note) : null), (u) => u.ergebnis.note), { obenKlein: true, spanne: 1, skala: ['oben: bessere Note', 'unten: schlechtere Note'] }),
       fuell: () => kurve('Füllwörter je Minute', reihe((u) => (u.messung ? u.messung.sprache.fuellJeMinute : null), (u, y) => komma(y))),
@@ -112,8 +121,9 @@ export function verlaufSeite(app) {
       kopfZeile,
       h('div', { class: 'serieKarte' }, h('b', {}, s.tage ? s.tage + (s.tage === 1 ? ' Tag' : ' Tage') + ' in Folge geübt' : 'Heute noch nicht geübt'), s.tage ? h('span', {}, s.heute ? 'Heute schon erledigt' : 'Heute noch offen') : null),
       sich.el,
+      h('label', { class: 'auswahlZeile' }, h('span', {}, 'Rubrik'), wahl),
       uebungsListe(liste),
-      h('h2', {}, 'Entwicklung'),
+      h('h2', {}, rubrik === 'alle' ? 'Entwicklung' : 'Entwicklung · ' + rubrik),
       (() => { const c = chips(KURVEN, kurveWahl, (w) => { kurveWahl = w; zeigeKurve(); }).el; c.classList.add('klein'); return c; })(),
       kurvenBox,
       h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '.'));
