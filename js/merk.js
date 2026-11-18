@@ -1,5 +1,5 @@
 // Merkzettel: das Wichtigste zum Nachschlagen, in eigenen Worten. Jede Zeile lässt sich aufklappen.
-import { h, fuelle, kopf, klappe } from './ui.js?v=2106';
+import { h, fuelle, kopf, klappe } from './ui.js?v=2107';
 
 const liste = (...punkte) => h('ul', { class: 'merk' }, punkte.map((p) => h('li', {}, p)));
 const nummern = (...punkte) => h('ol', { class: 'merk' }, punkte.map((p) => h('li', {}, p)));
@@ -24,9 +24,10 @@ const REDE = [
   ['Was am Anfang nichts verloren hat', () => [
     liste('lange Begrüßung und Dank', 'ein Überblick über die Gliederung', 'Organisatorisches', 'die eigene Vorstellung', 'Entschuldigungen'),
     satz('In den ersten Sekunden entscheiden die Zuhörer, ob sie zuhören. Diese Sekunden gehören dem Einstieg.')]],
-  ['Geschichte in 60 Sekunden', () => [
+  ['Geschichte erzählen', () => [
     liste('ein einziges Erlebnis, kein Lebenslauf', 'mitten in der Szene beginnen: Ort, Zeit, wer ist da', 'in der Gegenwart erzählen',
-      'ein Wendepunkt: Was kippt?', 'ein Schlusssatz, der sagt, was daraus folgt')]],
+      'ein Wendepunkt: Was kippt?', 'ein Schlusssatz, der sagt, was daraus folgt'),
+    satz('Eine Minute reicht für eine gute Geschichte. Die Redezeit stellst du selbst ein.')]],
   ['Sprache und Stimme', () => [
     liste('kurze Sätze, einfache Wörter', 'Bilder und Vergleiche statt Erklärungen', 'Fragen an die Zuhörer stellen',
       'Pause vor dem Wichtigen und danach', 'Tempo, Lautstärke und Tonhöhe wechseln', 'Füllwörter durch Pausen ersetzen'),

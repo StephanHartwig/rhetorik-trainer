@@ -1,15 +1,15 @@
 // Tagesprogramm „Heute üben“: jeden Tag zwei Aufgaben (Stegreifrede und Schlagfertigkeit) in zufälliger Reihenfolge.
 // Was aufgedeckt wurde, steht für den Tag fest. Ein neuer Tag beginnt um 4:00 Uhr.
-import { h, fuelle, kopf, geheZu } from './ui.js?v=2106';
-import { tagSchluessel } from './store.js?v=2106';
-import { ziehe, zieheAus } from './begriffe.js?v=2106';
-import { zieheImpuls } from './impulse.js?v=2106';
-import { redeAblauf } from './rede.js?v=2106';
+import { h, fuelle, kopf, geheZu } from './ui.js?v=2107';
+import { tagSchluessel } from './store.js?v=2107';
+import { ziehe, zieheAus } from './begriffe.js?v=2107';
+import { zieheImpuls } from './impulse.js?v=2107';
+import { redeAblauf } from './rede.js?v=2107';
 
 const K = 'rt.heute';
 const NAME = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit' };
 const REDENAME = { begriff: 'Stegreifrede', these: 'Überzeugungsrede', geschichte: 'Geschichte' };
-// Die Rede des Tages wechselt: meist ein Begriff, sonst eine Überzeugungsrede oder eine Geschichte in 60 Sekunden.
+// Die Rede des Tages wechselt: meist ein Begriff, sonst eine Überzeugungsrede oder eine Geschichte.
 const wuerfleRedeArt = () => { const z = Math.random(); return z < 0.4 ? 'begriff' : z < 0.7 ? 'these' : 'geschichte'; };
 
 function laden() {

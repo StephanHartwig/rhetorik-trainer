@@ -1,11 +1,11 @@
 // Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2106';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2106';
-import { ziehe, zieheAus } from './begriffe.js?v=2106';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=2106';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2106';
-import * as G from './geraet.js?v=2106';
+import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2107';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2107';
+import { ziehe, zieheAus } from './begriffe.js?v=2107';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=2107';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2107';
+import * as G from './geraet.js?v=2107';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
@@ -17,13 +17,12 @@ const ART = {
   einwand: { titel: 'Einwand', tun: 'Antworte mit einem bildhaften Vergleich.', knopf: 'Einwand zeigen', satz: 'Der Einwand erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte mit einem bildhaften Vergleich.' },
 };
 
-// Die Stegreifrede gibt es in drei Arten: über einen Begriff, als Überzeugungsrede zu einer These, als Geschichte in 60 Sekunden.
+// Die Stegreifrede gibt es in drei Arten: über einen Begriff, als Überzeugungsrede zu einer These, als Geschichte.
 const REDEART = {
   begriff: ART.rede,
   these: { titel: 'Überzeugungsrede', tun: 'Überzeuge deine Zuhörer von dieser These.', knopf: 'These zeigen', satz: 'Du bekommst eine These und eine Art des Einstiegs. Aufbau: Einstieg, drei Argumente, was passiert, wenn niemand handelt, Wiederholung, Aufforderung, Schlusspunkt.' },
-  geschichte: { titel: 'Geschichte in 60 Sekunden', tun: 'Erzähle dazu ein eigenes Erlebnis.', knopf: 'Thema zeigen', satz: 'Du bekommst einen Anlass und erzählst ein eigenes Erlebnis: mitten in der Szene beginnen, ein Wendepunkt, ein Schlusssatz. Die Zeit ist fest eine Minute.' },
+  geschichte: { titel: 'Geschichte', tun: 'Erzähle dazu ein eigenes Erlebnis.', knopf: 'Thema zeigen', satz: 'Du bekommst einen Anlass und erzählst ein eigenes Erlebnis: mitten in der Szene beginnen, ein Wendepunkt, ein Schlusssatz. Bewährt ist eine Minute; die Zeit wählst du selbst.' },
 };
-const GESCHICHTE_SEK = 60;
 
 // opt.modus: 'rede' | 'schlag' | 'einwand'
 // opt.redeArt: legt die Art der Rede fest (Tagesprogramm); sonst gilt die Einstellung.
@@ -32,7 +31,7 @@ export function redeAblauf(app, E, merke, opt = {}) {
   const modus = opt.modus || 'rede', heute = opt.heute || null;
   const redeArt = () => (modus !== 'rede' ? '' : REDEART[opt.redeArt] ? opt.redeArt : E.redeArt);
   const art = () => (modus === 'rede' ? REDEART[redeArt()] : ART[modus]);
-  const sollZeit = () => (modus !== 'rede' ? (modus === 'schlag' ? E.antwortSchlag : E.antwortEinwand) : redeArt() === 'geschichte' ? GESCHICHTE_SEK : E.redezeit);
+  const sollZeit = () => (modus !== 'rede' ? (modus === 'schlag' ? E.antwortSchlag : E.antwortEinwand) : E.redezeit);
   const vorZeit = modus === 'rede' ? E.vorbereitung : 0;
   let aktiv = true, takt = null, aufnahme = null, messer = null, strom = null, pose = null, meta = null, ton = null;
   const video = h('video', { class: 'vorschau', playsinline: true, autoplay: true });
@@ -88,7 +87,6 @@ export function redeAblauf(app, E, merke, opt = {}) {
     const artStand = () => {
       if (heute) { satz.textContent = 'Was kommt, siehst du erst nach dem Antippen. Kein Tauschen, kein Überspringen.'; return; }
       knopf.textContent = art().knopf; satz.textContent = art().satz;
-      zeitWahl.hidden = redeArt() === 'geschichte';
     };
     const artChips = chips([['begriff', 'Begriff'], ['these', 'Überzeugung'], ['geschichte', 'Geschichte']], E.redeArt, (v) => { merke('redeArt', v); artStand(); hinweise(); });
 

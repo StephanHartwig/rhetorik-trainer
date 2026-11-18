@@ -1,16 +1,16 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe, menue } from './ui.js?v=2106';
-import { fmtZeit, laden } from './store.js?v=2106';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2106';
-import { koerperMessen } from './koerper.js?v=2106';
-import { coachTeil } from './coach.js?v=2106';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2106';
-import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2106';
-import { artName, aufbauName } from './auswertung.js?v=2106';
-import * as I from './impulse.js?v=2106';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2106';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2106';
-import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2106';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe, menue } from './ui.js?v=2107';
+import { fmtZeit, laden } from './store.js?v=2107';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2107';
+import { koerperMessen } from './koerper.js?v=2107';
+import { coachTeil } from './coach.js?v=2107';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2107';
+import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2107';
+import { artName, aufbauName } from './auswertung.js?v=2107';
+import * as I from './impulse.js?v=2107';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2107';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2107';
+import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2107';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { speicherfehler: 'Fehler beim Speichern', abbruch: 'Aufnahme wurde unterbrochen', tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };

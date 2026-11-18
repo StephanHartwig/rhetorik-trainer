@@ -9,7 +9,7 @@ export const STANDARD = {
   antwortEinwand: 60,   // Sekunden, Einwand
   signal: 30,           // Sekunden vor Schluss, 0 = aus
   aufbau: 'klassisch',  // 'klassisch' oder 'frei' (gilt für die Rede über einen Begriff)
-  redeArt: 'begriff',   // 'begriff', 'these' (Überzeugungsrede) oder 'geschichte' (60 Sekunden)
+  redeArt: 'begriff',   // 'begriff', 'these' (Überzeugungsrede) oder 'geschichte'
   fachAnteil: 33,       // Prozent Fachbegriffe
   ausschnitt: 'nah',    // 'nah' oder 'ganz', letzte Wahl
   transkript: 'mittel', // 'mittel' (schnell) oder 'gross' (genau)

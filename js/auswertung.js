@@ -1,5 +1,5 @@
 // Auswertungspaket für den Coach bauen, Ergebniscode (RT1|…) lesen, Serie der Übungstage zählen.
-import { fmtZeit, tagSchluessel } from './store.js?v=2106';
+import { fmtZeit, tagSchluessel } from './store.js?v=2107';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const AUFBAU = { klassisch: 'klassisch', frei: 'frei', these: 'Überzeugungsrede', geschichte: 'Geschichte' };
@@ -70,7 +70,7 @@ export function paketText(u, opt = {}) {
   // Auflösung: Bei den kurzen Übungen will Stephan sehen, wie er es hätte sagen können – in drei Varianten.
   if (opt.ohneWunsch) return z.join('\n');
   if (u.aufbau === 'these') z.push('', 'MASSSTAB ÜBERZEUGUNGSREDE', 'Die Aufgabe ist eine These, die verteidigt wird. Prüfe das ganze Gerüst: den vorgegebenen Einstieg, drei verschieden gestützte Argumente, ein Was-wäre-wenn-Bild für den Fall, dass niemand handelt, die Wiederholung der drei Punkte, eine klare Handlungsaufforderung und danach einen gesetzten Schlusspunkt. Nenne die Stelle, an der der vorgegebene Einstieg umgesetzt ist, oder sag, dass er fehlt.');
-  if (u.aufbau === 'geschichte') z.push('', 'MASSSTAB GESCHICHTE', 'Die Aufgabe ist eine persönliche Geschichte in 60 Sekunden. Maßstab: ein einziges Erlebnis, Einstieg mitten in der Szene mit Ort und Zeit, Gegenwartsform, ein Wendepunkt, ein Schlusssatz mit der Lehre daraus. Das Gerüst mit drei Argumenten gilt hier nicht.');
+  if (u.aufbau === 'geschichte') z.push('', 'MASSSTAB GESCHICHTE', 'Die Aufgabe ist eine persönliche Geschichte in der vorgegebenen Zeit. Maßstab: ein einziges Erlebnis, Einstieg mitten in der Szene mit Ort und Zeit, Gegenwartsform, ein Wendepunkt, ein Schlusssatz mit der Lehre daraus. Das Gerüst mit drei Argumenten gilt hier nicht.');
   if (u.modus === 'schlag') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt einer Musterantwort eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diese Aussage, jede mit einer anderen Technik. Nenne zu jeder Variante die Technik und schreib die Antwort wörtlich aus, höchstens drei Sätze.');
   if (u.modus === 'einwand') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt eines einzelnen alternativen Bildes eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diesen Einwand, jede mit einem bildhaften Vergleich aus einer anderen Welt und mit der Brücke „Und genauso ist es mit …“. Schreib jede Antwort wörtlich aus, höchstens drei Sätze.');
   return z.join('\n');
