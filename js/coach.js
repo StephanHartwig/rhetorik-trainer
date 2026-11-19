@@ -1,11 +1,11 @@
 // Ergebnisseite, Teil „Auswertung“: automatisch über die Anthropic-Schnittstelle oder von Hand über die Claude-App.
-import { h, fuelle, geheZu, klappe, istOffen, merkeOffen } from './ui.js?v=2201';
-import { fmtZeit } from './store.js?v=2201';
-import { paketText, codeLesen } from './auswertung.js?v=2201';
-import { bilderLaden, uebungSpeichern } from './db.js?v=2201';
-import { md } from './md.js?v=2201';
-import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2201';
-import { wachAn, wachAus } from './geraet.js?v=2201';
+import { h, fuelle, geheZu, klappe, istOffen, merkeOffen } from './ui.js?v=2202';
+import { fmtZeit } from './store.js?v=2202';
+import { paketText, codeLesen } from './auswertung.js?v=2202';
+import { bilderLaden, uebungSpeichern } from './db.js?v=2202';
+import { md } from './md.js?v=2202';
+import { autoStand, autoModell, autoAuswerten, entwirren, coachText } from './auto.js?v=2202';
+import { wachAn, wachAus } from './geraet.js?v=2202';
 
 const PUNKT = { 1: 'erfüllt', 0.5: 'teilweise', 0: 'fehlt' };
 const dollar = (x) => (x < 0.01 ? 'unter 0,01' : x.toFixed(2).replace('.', ',')) + ' US-Dollar';
@@ -43,10 +43,14 @@ export function coachTeil(u, beiNeu) {
     } }, u.feedback ? 'Noch einmal automatisch auswerten' : 'Automatisch auswerten');
 
     // ---------- von Hand über die Claude-App ----------
-    const kopiere = () => navigator.clipboard.writeText(paketText(u)).then(() => sag('Der Text ist kopiert. Füge ihn in der Claude-App im Projekt „Rhetorik-Coach“ ein.'))
+    // Das Teilen-Menü legt in der Claude-App ein neues Gespräch außerhalb des Projekts an. Damit der Coach trotzdem
+    // nach seinen Regeln bewertet, schickt die App die Coach-Anweisung gleich mit (wenn sie auf dem Gerät hinterlegt ist).
+    const mitCoach = coachText().length > 200;
+    const handText = () => (mitCoach ? 'Du bist mein Rhetorik-Coach. Halte dich bei der Bewertung genau an die folgende Anweisung. Danach folgt das Auswertungspaket meiner Rede.\n\n===== ANWEISUNG =====\n\n' + coachText() + '\n\n===== ENDE DER ANWEISUNG =====\n\n' : '') + paketText(u);
+    const kopiere = () => navigator.clipboard.writeText(handText()).then(() => sag(mitCoach ? 'Der Text ist kopiert. Öffne die Claude-App, drücke unten lange in das Nachrichtenfeld, tippe auf „Einsetzen“ und schicke ab.' : 'Der Text ist kopiert. Öffne in der Claude-App das Projekt „Rhetorik-Coach“, drücke unten lange in das Nachrichtenfeld, tippe auf „Einsetzen“ und schicke ab.'))
       .catch(() => sag('Kopieren hat nicht geklappt.', true));
     const teilen = h('button', { class: 'breit' + (auto.bereit ? '' : ' blau'), disabled: !bereit, onclick: () => {
-      const daten = { text: paketText(u) };
+      const daten = { text: handText() };
       if (dateien.length) daten.files = dateien;
       if (!navigator.share) { kopiere(); return; }
       if (daten.files && !(navigator.canShare && navigator.canShare(daten))) {
@@ -91,14 +95,17 @@ export function coachTeil(u, beiNeu) {
       h('ol', { class: 'merk' }, [
         'Tippe auf „An die Claude-App teilen“.',
         'Es öffnet sich das Teilen-Menü. Tippe dort auf „Claude“.',
-        'Wähle in der Claude-App das Projekt „Rhetorik-Coach“ und schicke die Nachricht ab.',
+        mitCoach ? 'Die Claude-App öffnet sich mit einer neuen Nachricht. Text und Bilder stehen schon darin. Du musst nichts kopieren und kein Projekt wählen: Tippe nur auf den Pfeil zum Abschicken.'
+          : 'Die Claude-App öffnet sich mit einer neuen Nachricht. Text und Bilder stehen schon darin. Tippe auf den Pfeil zum Abschicken.',
         'Warte, bis der Coach fertig geantwortet hat.',
         'Drücke lange auf die Antwort und tippe auf „Kopieren“.',
         'Wechsle zurück in den Rhetorik-Trainer.',
         'Tippe auf „Ergebnis einfügen“. Fragt das iPhone „Einsetzen erlauben“, tippe auf „Erlauben“.',
         'Die App fragt, ob sie auch das ganze Feedback speichern soll. Tippe auf „OK“. Note und Feedback stehen danach hier auf der Seite.',
       ].map((t) => h('li', {}, t))),
-      h('p', { class: 'grau' }, 'Fehlt „Claude“ im Teilen-Menü? Dann tippe auf „Text kopieren“, öffne die Claude-App selbst und füge den Text im Projekt „Rhetorik-Coach“ ein. Die Bilder schickst du mit „Nur Bilder teilen“ hinterher.'));
+      mitCoach ? h('p', { class: 'grau' }, 'Die Anweisung für den Coach schickt die App jedes Mal mit. Deshalb ist es egal, in welchem Gespräch die Nachricht landet.')
+        : h('p', { class: 'warn' }, 'Wichtig: Der Coach bewertet nur richtig, wenn er seine Anweisung kennt. Hinterlege sie einmal in dieser App: Zahnrad auf dem Startbildschirm, „Automatische Auswertung“, „2 · Coach-Anweisung“. Danach schickt die App sie jedes Mal mit.'),
+      h('p', { class: 'grau' }, 'Fehlt „Claude“ im Teilen-Menü? Dann tippe auf „Text kopieren“, öffne die Claude-App selbst, drücke unten lange in das Nachrichtenfeld und tippe auf „Einsetzen“. Die Bilder schickst du mit „Nur Bilder teilen“ hinterher.'));
     const hilfeKnopf = h('button', { class: 'infoFeld', 'aria-expanded': String(!hilfe.hidden), onclick: () => {
       hilfe.hidden = !hilfe.hidden; merkeOffen('hilfe.vonhand', !hilfe.hidden); hilfeKnopf.setAttribute('aria-expanded', String(!hilfe.hidden));
     } }, h('span', { class: 'infoI' }, 'ℹ︎'), h('span', {}, 'So geht die Übergabe von Hand'));
