@@ -1,10 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue, istOffen, merkeOffen } from './ui.js?v=2203';
-import { fmtZeit } from './store.js?v=2203';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2203';
-import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2203';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2203';
-import { entwirren } from './auto.js?v=2203';
+import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue, istOffen, merkeOffen } from './ui.js?v=2204';
+import { fmtZeit } from './store.js?v=2204';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2204';
+import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2204';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2204';
+import { entwirren } from './auto.js?v=2204';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -127,19 +127,11 @@ export function verlaufSeite(app) {
       kurvenBox,
       h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '.'));
 
-    // Liste der Übungen: Antippen öffnet eine Übung. Wischen nach links oder rechts legt „Löschen“ frei, wie in den Listen des iPhones.
+    // Liste der Übungen: Antippen öffnet eine Übung. Wischen von links nach rechts löscht sie sofort, ohne Rückfrage.
     function uebungsListe(liste) {
-      const BREIT = 96;                       // so weit fährt eine Zeile zur Seite
       const titel = h('div', { class: 'listenKopf' });
       const zeilen = h('div', { class: 'stapel rollListe' });
-      const tipp = h('p', { class: 'grau' }, 'Zum Löschen eine Übung zur Seite wischen.');
-      let offene = null;                      // die Zeile, die gerade zur Seite geschoben ist
-      const schliesse = () => { if (offene) { offene.setze(0, true); offene = null; } };
-      const loesche = async (u) => {
-        if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) { schliesse(); return; }
-        try { await uebungLoeschen(u.id); } catch (e) {}
-        if (aktiv) lade();
-      };
+      const tipp = h('p', { class: 'grau' }, 'Zum Löschen eine Übung nach rechts wischen. Sie wird sofort gelöscht.');
       function zeile(u) {
         const knopf = h('button', { class: 'reihe eintrag' },
           h('span', { class: 'eInhalt' },
@@ -148,33 +140,39 @@ export function verlaufSeite(app) {
             h('span', { class: 'e2' }, [tag(u.datum), u.status === 'fertig' ? fmtZeit(u.ist) : 'nicht sauber beendet', artName(u)].join(' · '))),
           u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null,
           h('span', { class: 'pfeil' }, '›'));
-        const weg = (seite) => h('button', { class: 'wischLoesch ' + seite, 'aria-label': 'Übung löschen', onclick: () => loesche(u) }, 'Löschen');
-        const huelle = h('div', { class: 'wisch' }, weg('links'), weg('rechts'), knopf);
-        let x = 0, x0 = 0, y0 = 0, start = 0, richtung = '', gewischt = false;
-        const selbst = { setze(v, weich) { x = v; knopf.style.transition = weich ? 'transform .18s' : 'none'; knopf.style.transform = v ? 'translateX(' + v + 'px)' : ''; huelle.classList.toggle('offen', v !== 0); } };
+        const grund = h('div', { class: 'wischLoesch' }, 'Löschen');
+        const huelle = h('div', { class: 'wisch' }, grund, knopf);
+        let x = 0, x0 = 0, y0 = 0, richtung = '', gewischt = false, weg = false;
+        const setze = (v, weich) => { x = v; knopf.style.transition = weich ? 'transform .18s' : 'none'; knopf.style.transform = v ? 'translateX(' + v + 'px)' : ''; huelle.classList.toggle('offen', v !== 0); };
+        // Gelöscht wird erst, wenn die Zeile fast zur Hälfte zur Seite geschoben ist: So löst ein kurzes Verwischen nichts aus.
+        const schwelle = () => Math.max(110, huelle.offsetWidth * 0.45);
         knopf.addEventListener('touchstart', (ev) => {
-          if (ev.touches.length !== 1) return;
-          if (offene && offene !== selbst) schliesse();
-          x0 = ev.touches[0].clientX; y0 = ev.touches[0].clientY; start = x; richtung = ''; gewischt = false;
+          if (weg || ev.touches.length !== 1) return;
+          x0 = ev.touches[0].clientX; y0 = ev.touches[0].clientY; richtung = ''; gewischt = false;
         }, { passive: true });
         knopf.addEventListener('touchmove', (ev) => {
+          if (weg) return;
           const dx = ev.touches[0].clientX - x0, dy = ev.touches[0].clientY - y0;
-          if (!richtung) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; richtung = Math.abs(dx) > Math.abs(dy) ? 'quer' : 'hoch'; }
-          if (richtung !== 'quer') return;            // senkrecht: die Liste rollt
+          if (!richtung) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; richtung = dx > 0 && Math.abs(dx) > Math.abs(dy) ? 'quer' : 'sonst'; }
+          if (richtung !== 'quer') return;            // senkrecht rollt die Liste; nach links passiert nichts
           if (ev.cancelable) ev.preventDefault();
           gewischt = true;
-          selbst.setze(Math.max(-BREIT, Math.min(BREIT, start + dx)), false);
+          setze(Math.max(0, dx), false);
+          huelle.classList.toggle('reif', x >= schwelle());
         }, { passive: false });
-        const ende = () => {
-          if (richtung !== 'quer') return;
-          const ziel = x <= -BREIT / 2 ? -BREIT : x >= BREIT / 2 ? BREIT : 0;
-          selbst.setze(ziel, true); offene = ziel ? selbst : (offene === selbst ? null : offene);
+        const ende = async (abbruch) => {
+          if (weg || richtung !== 'quer') return;
+          richtung = '';
+          if (abbruch || x < schwelle()) { huelle.classList.remove('reif'); setze(0, true); return; }
+          weg = true;
+          setze(huelle.offsetWidth, true);            // die Zeile fährt hinaus
+          try { await uebungLoeschen(u.id); } catch (e) {}
+          if (aktiv) lade();
         };
-        knopf.addEventListener('touchend', ende);
-        knopf.addEventListener('touchcancel', ende);
+        knopf.addEventListener('touchend', () => ende(false));
+        knopf.addEventListener('touchcancel', () => ende(true));
         knopf.addEventListener('click', (ev) => {
-          if (gewischt) { gewischt = false; ev.preventDefault(); return; }       // das Wischen selbst ist kein Antippen
-          if (x) { schliesse(); return; }                                         // offene Zeile: Antippen schiebt sie zurück
+          if (weg || gewischt) { gewischt = false; ev.preventDefault(); return; }       // das Wischen selbst ist kein Antippen
           geheZu('#/uebung/' + u.id);
         });
         return huelle;
@@ -182,7 +180,7 @@ export function verlaufSeite(app) {
       function zeichne() {
         const zu = !istOffen('verlauf.liste');
         zeilen.hidden = zu; tipp.hidden = zu || !liste.length;
-        fuelle(titel, h('button', { class: 'klappKopf', 'aria-expanded': String(!zu), onclick: () => { merkeOffen('verlauf.liste', zu); offene = null; zeichne(); } },
+        fuelle(titel, h('button', { class: 'klappKopf', 'aria-expanded': String(!zu), onclick: () => { merkeOffen('verlauf.liste', zu); zeichne(); } },
           h('h2', {}, 'Übungen (' + liste.length + ')'), h('span', { class: 'winkel' + (zu ? '' : ' auf') }, '›')));
         fuelle(zeilen, liste.map(zeile));
       }

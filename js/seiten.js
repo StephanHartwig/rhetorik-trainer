@@ -1,16 +1,16 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe, menue, zurueckZiel } from './ui.js?v=2203';
-import { fmtZeit, laden } from './store.js?v=2203';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2203';
-import { koerperMessen } from './koerper.js?v=2203';
-import { coachTeil } from './coach.js?v=2203';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2203';
-import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2203';
-import { artName, aufbauName } from './auswertung.js?v=2203';
-import * as I from './impulse.js?v=2203';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2203';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2203';
-import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2203';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe, menue, zurueckZiel } from './ui.js?v=2204';
+import { fmtZeit, laden } from './store.js?v=2204';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2204';
+import { koerperMessen } from './koerper.js?v=2204';
+import { coachTeil } from './coach.js?v=2204';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2204';
+import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2204';
+import { artName, aufbauName } from './auswertung.js?v=2204';
+import * as I from './impulse.js?v=2204';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2204';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2204';
+import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2204';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const ENDE = { speicherfehler: 'Fehler beim Speichern', abbruch: 'Aufnahme wurde unterbrochen', tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };

@@ -346,11 +346,10 @@ h2.abschnitt + .breit, h2.abschnitt + div > .breit:first-child { margin-top: 0; 
 .infoFeld[aria-expanded="true"] { border-color: var(--blau); }
 .hilfeText { background: var(--bg); border: 1px solid var(--linie); border-radius: 14px; padding: 6px 14px 10px; margin-top: 8px; font-size: 16px; }
 
-/* Verlauf: Zeile zur Seite wischen legt „Löschen“ frei */
+/* Verlauf: Zeile nach rechts wischen löscht die Übung */
 .wisch { position: relative; overflow: hidden; }
 .wisch > .eintrag { position: relative; z-index: 1; margin: 0; background: var(--karte); border: 0; border-radius: 0; padding: 12px 16px; font-weight: 400; touch-action: pan-y; will-change: transform; }
-.wischLoesch { position: absolute; top: 0; bottom: 0; width: 96px; border: 0; background: var(--rot); color: #fff; font-weight: 700; font-size: 16px; visibility: hidden; }
+.wischLoesch { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 18px; background: #7f1d1d; color: #fff; font-weight: 700; font-size: 16px; visibility: hidden; }
 .wisch.offen .wischLoesch { visibility: visible; }
-.wischLoesch.links { left: 0; }
-.wischLoesch.rechts { right: 0; }
+.wisch.reif .wischLoesch { background: var(--rot); }
 .rollListe + p.grau { margin: 4px 4px 0; font-size: 14px; }

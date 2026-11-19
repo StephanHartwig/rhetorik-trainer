@@ -1,5 +1,5 @@
 // Auswertungspaket für den Coach bauen, Ergebniscode (RT1|…) lesen, Serie der Übungstage zählen.
-import { fmtZeit, tagSchluessel } from './store.js?v=2203';
+import { fmtZeit, tagSchluessel } from './store.js?v=2204';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const AUFBAU = { klassisch: 'klassisch', frei: 'frei', these: 'Überzeugungsrede', geschichte: 'Geschichte' };
