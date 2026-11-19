@@ -353,3 +353,7 @@ h2.abschnitt + .breit, h2.abschnitt + div > .breit:first-child { margin-top: 0; 
 .wisch.offen .wischLoesch { visibility: visible; }
 .wisch.reif .wischLoesch { background: var(--rot); }
 .rollListe + p.grau { margin: 4px 4px 0; font-size: 14px; }
+
+/* Sieben Kacheln: Die letzte nimmt die ganze Breite. */
+.raster .breitKachel { grid-column: 1 / -1; min-height: 64px; }
+.wahlReihe + .klapp, .stapel .klapp textarea.einfuegen { margin-top: 6px; }

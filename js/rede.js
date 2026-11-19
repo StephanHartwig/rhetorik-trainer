@@ -1,11 +1,12 @@
-// Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
+// Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand, Pitch):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, geheZu, REDEZEITEN, mb } from './ui.js?v=2204';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2204';
-import { ziehe, zieheAus } from './begriffe.js?v=2204';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=2204';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2204';
-import * as G from './geraet.js?v=2204';
+import { h, fuelle, kopf, chips, klappe, geheZu, REDEZEITEN, mb } from './ui.js?v=2300';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2300';
+import { ziehe, zieheAus } from './begriffe.js?v=2300';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=2300';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2300';
+import * as G from './geraet.js?v=2300';
+import { PITCHZEITEN, pitchAngaben, merkePitch, zieheKniff } from './pitch.js?v=2300';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
@@ -15,6 +16,8 @@ const ART = {
   rede: { titel: 'Stegreifrede', tun: 'Halte eine Rede über diesen Begriff.', knopf: 'Begriff zeigen', satz: 'Der Begriff erscheint sofort. Kein Tauschen, kein Überspringen.' },
   schlag: { titel: 'Schlagfertigkeit', tun: 'Reagiere sofort auf diese Aussage.', knopf: 'Aussage zeigen', satz: 'Jemand sagt etwas Kritisches, Komisches oder Dummes zu dir. Die Aussage erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Reagiere direkt.' },
   einwand: { titel: 'Einwand', tun: 'Antworte mit einem bildhaften Vergleich.', knopf: 'Einwand zeigen', satz: 'Der Einwand erscheint sofort, die Aufnahme läuft ohne Vorbereitung los. Antworte mit einem bildhaften Vergleich.' },
+  pitch: { titel: 'Pitch', tun: 'Stell dein Angebot vor. Schließe mit einer klaren Aufforderung.', knopf: 'Pitch starten',
+    satz: 'Dein Pitch in genau der gewählten Zeit: auffallen, sagen, was du für wen tust, und mit einer klaren Aufforderung schließen. Am Ende der Zeit ertönen drei Töne, die Uhr wird rot.' },
 };
 
 // Die Stegreifrede gibt es in drei Arten: über einen Begriff, als Überzeugungsrede zu einer These, als Geschichte.
@@ -24,15 +27,15 @@ const REDEART = {
   geschichte: { titel: 'Geschichte', tun: 'Erzähle dazu ein eigenes Erlebnis.', knopf: 'Thema zeigen', satz: 'Du bekommst einen Anlass und erzählst ein eigenes Erlebnis: mitten in der Szene beginnen, ein Wendepunkt, ein Schlusssatz. Bewährt ist eine Minute; die Zeit wählst du selbst.' },
 };
 
-// opt.modus: 'rede' | 'schlag' | 'einwand'
+// opt.modus: 'rede' | 'schlag' | 'einwand' | 'pitch'
 // opt.redeArt: legt die Art der Rede fest (Tagesprogramm); sonst gilt die Einstellung.
 // opt.heute: { nr, aufgabe(), fertig(meta) } für das Tagesprogramm – dort bleibt verdeckt, welche Übung kommt.
 export function redeAblauf(app, E, merke, opt = {}) {
   const modus = opt.modus || 'rede', heute = opt.heute || null;
   const redeArt = () => (modus !== 'rede' ? '' : REDEART[opt.redeArt] ? opt.redeArt : E.redeArt);
   const art = () => (modus === 'rede' ? REDEART[redeArt()] : ART[modus]);
-  const sollZeit = () => (modus !== 'rede' ? (modus === 'schlag' ? E.antwortSchlag : E.antwortEinwand) : E.redezeit);
-  const vorZeit = modus === 'rede' ? E.vorbereitung : 0;
+  const sollZeit = () => (modus === 'pitch' ? E.pitchzeit : modus !== 'rede' ? (modus === 'schlag' ? E.antwortSchlag : E.antwortEinwand) : E.redezeit);
+  const vorZeit = modus === 'rede' || modus === 'pitch' ? E.vorbereitung : 0;
   let aktiv = true, takt = null, aufnahme = null, messer = null, strom = null, pose = null, meta = null, ton = null;
   const video = h('video', { class: 'vorschau', playsinline: true, autoplay: true });
   video.muted = true;
@@ -128,10 +131,36 @@ export function redeAblauf(app, E, merke, opt = {}) {
     const satz = h('p', { class: 'grau' });
     const artStand = () => {
       if (heute) { satz.textContent = 'Was kommt, siehst du erst nach dem Antippen. Kein Tauschen, kein Überspringen.'; return; }
-      knopf.textContent = art().knopf; satz.textContent = art().satz;
+      knopf.textContent = modus === 'pitch' && E.pitchVorgabe === 'kniff' ? 'Kniff zeigen' : art().knopf; satz.textContent = art().satz;
     };
     const artChips = chips([['begriff', 'Begriff'], ['these', 'Überzeugung'], ['geschichte', 'Geschichte']], E.redeArt, (v) => { merke('redeArt', v); artStand(); hinweise(); });
     const wahl = (name, ...inhalt) => h('div', { class: 'wahlReihe' }, h('span', { class: 'name' }, name), inhalt);
+    // Pitch: Dauer, Vorgabe und die eigenen Angaben. Jeder pitcht sein eigenes Angebot; der Coach bekommt die Angaben mit.
+    let pitchTeil = null;
+    if (modus === 'pitch') {
+      const P = pitchAngaben();
+      const vorgabeHinweis = h('div', { class: 'hinweis' });
+      const vorgabeStand = () => { vorgabeHinweis.textContent = E.pitchVorgabe === 'kniff' ? 'Du bekommst einen Kniff und eine Tonart, mit denen dein Pitch auffällt.' : 'Du pitchst ohne Vorgabe, so wie du es vorbereitet hast.'; };
+      const dauer = chips(PITCHZEITEN, E.pitchzeit, (v) => { merke('pitchzeit', v); hinweise(); });
+      const vorgabe = chips([['kniff', 'Kniff ziehen'], ['frei', 'Ohne Vorgabe']], E.pitchVorgabe, (v) => { merke('pitchVorgabe', v); vorgabeStand(); artStand(); });
+      const stand = h('span', { class: 'wert' });
+      const standText = () => { const a = pitchAngaben(); stand.textContent = a.angebot ? 'eingetragen ✓' : 'fehlt'; };
+      const feld = (name, schluessel, platz, zeilen) => {
+        const el = h(zeilen ? 'textarea' : 'input', { class: zeilen ? 'einfuegen' : 'text', placeholder: platz, maxlength: schluessel === 'angebot' ? 300 : 160, 'aria-label': name, ...(zeilen ? { rows: zeilen } : { type: 'text', enterkeyhint: 'done' }) });
+        el.value = P[schluessel];
+        el.addEventListener('input', () => { merkePitch(schluessel, el.value); standText(); });
+        return [h('div', { class: 'hinweis' }, name), el];
+      };
+      vorgabeStand(); standText();
+      pitchTeil = [
+        wahl('Dauer', dauer.el),
+        wahl('Vorgabe', vorgabe.el, vorgabeHinweis),
+        klappe('pitch.ich', 'Mein Angebot', stand,
+          feld('Was bietest du an, und für wen?', 'angebot', 'in einem Satz', 3),
+          feld('Worüber sprichst du diesmal? (wenn du magst)', 'thema', 'das Thema dieser Woche'),
+          feld('Wen oder was suchst du? (wenn du magst)', 'wunsch', 'die Empfehlung, die du dir wünschst'),
+          h('div', { class: 'hinweis' }, 'Die Angaben bleiben auf diesem Gerät. Dein Coach bekommt sie mit dem Paket und bewertet deinen Pitch danach.'))];
+    }
 
     fuelle(app,
       kopf(heute ? 'Heute üben' : ART[modus].titel),
@@ -140,7 +169,8 @@ export function redeAblauf(app, E, merke, opt = {}) {
       video, kameraStand, meldung, neuKnopf,
       h('div', { class: 'stapel' },
         heute || modus !== 'rede' ? null : wahl('Art der Rede', artChips.el),
-        heute ? null : modus === 'rede' ? wahl('Redezeit', zeitWahl, zeitHinweis)
+        pitchTeil,
+        heute || modus === 'pitch' ? null : modus === 'rede' ? wahl('Redezeit', zeitWahl, zeitHinweis)
           : wahl('Antwortzeit', h('div', { class: 'festWert' }, fmtZeit(sollZeit()), h('span', { class: 'grau' }, ' · ändern im Zahnrad auf dem Startbildschirm'))),
         wahl('Bildausschnitt', ausChips.el, ausHinweis)),
       platz,
@@ -163,14 +193,16 @@ export function redeAblauf(app, E, merke, opt = {}) {
     G.tonAn(); G.wachAn();                       // beides muss direkt im Antippen starten
     const ganz = E.ausschnitt === 'ganz';
     const soll = sollZeit(), nurTon = soll > 1200;
-    const b = heute ? heute.aufgabe() : modus === 'rede' ? (redeArt() === 'begriff' ? ziehe(E.fachAnteil) : zieheAus(redeArt())) : modus === 'schlag' ? zieheImpuls() : zieheEinwand();
+    const pitch = modus === 'pitch' ? pitchAngaben() : null;
+    const kniff = pitch && E.pitchVorgabe === 'kniff' ? zieheKniff() : null;
+    const b = pitch ? { text: kniff ? kniff.text : pitch.thema || 'Dein Pitch', zusatz: kniff ? 'Tonart: ' + kniff.tonart : '' } : heute ? heute.aufgabe() : modus === 'rede' ? (redeArt() === 'begriff' ? ziehe(E.fachAnteil) : zieheAus(redeArt())) : modus === 'schlag' ? zieheImpuls() : zieheEinwand();
     if (ganz) G.poseLaden().then((p) => { pose = p; }).catch(() => { handInfo.textContent = 'Handzeichen nicht verfügbar. Beenden durch Schweigen oder Antippen.'; });
     try { messer = G.pegelMesser(strom); } catch (e) { messer = null; }
     G.pcmVorbereiten().catch(() => {});       // Mitschnitt der Tonspur schon jetzt laden
 
     const status = h('div', { class: 'status' }, vorZeit ? 'Vorbereitung' : '');
     // Was ist das für eine Übung, und was ist zu tun? Wichtig vor allem im Tagesprogramm, wo es vorher verdeckt ist.
-    const artZeile = h('div', { class: 'artZeile' }, h('b', {}, art().titel), art().tun, b.einstieg ? h('span', { class: 'einstieg' }, 'Beginne mit: ' + b.einstieg) : null);
+    const artZeile = h('div', { class: 'artZeile' }, h('b', {}, art().titel), art().tun, b.einstieg ? h('span', { class: 'einstieg' }, 'Beginne mit: ' + b.einstieg) : null, b.zusatz ? h('span', { class: 'einstieg' }, b.zusatz) : null);
     const uhr = h('div', { class: 'uhr' });
     const begriff = h('div', { class: 'begriff', lang: 'de' });
     const frageBox = h('div', { class: 'frage', hidden: true });
@@ -194,7 +226,7 @@ export function redeAblauf(app, E, merke, opt = {}) {
     // Vorbereitung: Zeit läuft rückwärts, dabei wird die Raumlautstärke eingemessen
     passe(20);
     const proben = [];
-    let t0 = performance.now(), phase = 'vor', gesignalt = false, beendet = false;
+    let t0 = performance.now(), phase = 'vor', gesignalt = false, zeitUm = false, beendet = false;
     let eingemessen = false, schwelle = 0.008, boden = null, pegelMax = 0, letzteStimme = 0, frage = null, hand = 0, handStart = 0, handTick = 0;
 
     // Geht vor oder beim Start der Aufnahme etwas schief, zurück zur Seite davor – mit Erklärung statt stehender Uhr.
@@ -215,8 +247,8 @@ export function redeAblauf(app, E, merke, opt = {}) {
       if (proben.length >= 5) { proben.sort((a, c) => a - c); boden = proben[Math.floor(proben.length * 0.2)]; schwelle = Math.min(0.02, Math.max(0.004, boden * 3)); eingemessen = true; }
       proben.length = 0;
       const jetzt = new Date();
-      meta = { id: String(jetzt.getTime()), datum: jetzt.toISOString(), tag: tagSchluessel(jetzt), modus, aufgabe: b.text, kategorie: b.kategorie || '', art: b.art || '',
-               aufbau: modus === 'rede' ? (redeArt() === 'begriff' ? E.aufbau : redeArt()) : '', einstieg: b.einstieg || '', heute: heute ? heute.nr : 0, ausschnitt: E.ausschnitt, soll, ist: 0, typ: nurTon ? 'ton' : 'video', status: 'läuft', groesse: 0 };
+      meta = { id: String(jetzt.getTime()), datum: jetzt.toISOString(), tag: tagSchluessel(jetzt), modus, aufgabe: pitch ? (pitch.thema || pitch.angebot || 'Pitch').slice(0, 80) : b.text, kategorie: b.kategorie || '', art: b.art || '',
+               aufbau: modus === 'rede' ? (redeArt() === 'begriff' ? E.aufbau : redeArt()) : '', einstieg: b.einstieg || '', ...(pitch ? { angebot: pitch.angebot, thema: pitch.thema, wunsch: pitch.wunsch, kniff: kniff ? kniff.text : '', tonart: kniff ? kniff.tonart : '' } : {}), heute: heute ? heute.nr : 0, ausschnitt: E.ausschnitt, soll, ist: 0, typ: nurTon ? 'ton' : 'video', status: 'läuft', groesse: 0 };
       uebungSpeichern(meta).catch(() => {});
       try { aufnahme = G.aufnahmeStarten(strom, meta.id, nurTon); }
       catch (e) { zurueck('Die Aufnahme ließ sich nicht starten (' + (e.name || e.message || 'Fehler') + '). Bitte noch einmal versuchen.'); return; }
@@ -282,6 +314,8 @@ export function redeAblauf(app, E, merke, opt = {}) {
       uhr.classList.toggle('ueber', rest < 0);
       const sig = signalFuer(E, soll);
       if (sig && sig < soll && !gesignalt && rest <= sig) { gesignalt = true; G.signal(2); }
+      // Beim Pitch zählt die Zeit am meisten: Ist sie um, ertönen drei Töne. Die Aufnahme läuft weiter, die Überziehung wird gemessen.
+      if (modus === 'pitch' && !zeitUm && rest <= 0) { zeitUm = true; G.signal(3, 520); }
       if (el >= soll + UEBERZUG_MAX) { beenden('automatisch'); return; }
       // Lässt sich nichts mehr speichern (meist: Speicher voll), sofort beenden statt weiter ins Leere aufzunehmen
       if (aufnahme && aufnahme.fehler) { beenden('speicherfehler'); return; }

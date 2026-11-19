@@ -1,5 +1,5 @@
 // Merkzettel: das Wichtigste zum Nachschlagen, in eigenen Worten. Jede Zeile lässt sich aufklappen.
-import { h, fuelle, kopf, klappe } from './ui.js?v=2204';
+import { h, fuelle, kopf, klappe } from './ui.js?v=2300';
 
 const liste = (...punkte) => h('ul', { class: 'merk' }, punkte.map((p) => h('li', {}, p)));
 const nummern = (...punkte) => h('ol', { class: 'merk' }, punkte.map((p) => h('li', {}, p)));
@@ -28,6 +28,14 @@ const REDE = [
     liste('ein einziges Erlebnis, kein Lebenslauf', 'mitten in der Szene beginnen: Ort, Zeit, wer ist da', 'in der Gegenwart erzählen',
       'ein Wendepunkt: Was kippt?', 'ein Schlusssatz, der sagt, was daraus folgt'),
     satz('Eine Minute reicht für eine gute Geschichte. Die Redezeit stellst du selbst ein.')]],
+  ['Pitch in 30 bis 60 Sekunden', () => [
+    nummern(
+      'Auffallen: Die ersten zwei Sätze brechen das Muster – mit einem Bild, einer Zahl, einer Frage, einem Gegenstand oder einer kleinen Geschichte.',
+      'Klar sagen, was du tust und für wen. Ein Thema je Pitch, kein Bauchladen.',
+      'Den Nutzen zeigen: ein Beispiel oder ein Vorher-Nachher statt einer Aufzählung.',
+      'Klare Aufforderung: Wen sollen die Zuhörer dir empfehlen, wen ansprechen? Je genauer, desto besser.',
+      'Schlusspunkt: Name, Firma und ein Merksatz. Dann stehen bleiben.'),
+    satz('Die Zeit ist die härteste Regel: lieber zwei Sekunden früher fertig als eine zu spät. Als Faustregel passen in 30 Sekunden rund 70 Wörter, in 45 Sekunden rund 110, in 60 Sekunden rund 140. Wer als einer von vielen spricht, bleibt nur im Gedächtnis, wenn er etwas anders macht als die anderen.')]],
   ['Sprache und Stimme', () => [
     liste('kurze Sätze, einfache Wörter', 'Bilder und Vergleiche statt Erklärungen', 'Fragen an die Zuhörer stellen',
       'Pause vor dem Wichtigen und danach', 'Tempo, Lautstärke und Tonhöhe wechseln', 'Füllwörter durch Pausen ersetzen'),

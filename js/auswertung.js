@@ -1,7 +1,7 @@
 // Auswertungspaket für den Coach bauen, Ergebniscode (RT1|…) lesen, Serie der Übungstage zählen.
-import { fmtZeit, tagSchluessel } from './store.js?v=2204';
+import { fmtZeit, tagSchluessel } from './store.js?v=2300';
 
-const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
+const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand', pitch: 'Pitch' };
 const AUFBAU = { klassisch: 'klassisch', frei: 'frei', these: 'Überzeugungsrede', geschichte: 'Geschichte' };
 // Name der Übungsart für Listen und Überschriften
 export const artName = (u) => (u.modus === 'rede' && u.aufbau === 'these' ? 'Überzeugungsrede' : u.modus === 'rede' && u.aufbau === 'geschichte' ? 'Geschichte' : MODUS[u.modus] || u.modus);
@@ -16,7 +16,13 @@ export function paketText(u, opt = {}) {
   const d = Math.round(u.ist - u.soll), p = Math.round((u.ist - u.soll) / u.soll * 100);
   z.push('RHETORIK-TRAINER · AUSWERTUNGSPAKET');
   z.push('Modus: ' + (MODUS[u.modus] || u.modus) + (u.art ? ' (' + u.art + ')' : ''));
-  z.push('Aufgabe: ' + u.aufgabe);
+  if (u.modus === 'pitch') {
+    z.push('Angebot (Angabe der Person): ' + (u.angebot || 'nicht angegeben'));
+    if (u.thema) z.push('Thema dieses Pitchs: ' + u.thema);
+    if (u.wunsch) z.push('Gesucht (Angabe der Person): ' + u.wunsch);
+    z.push(u.kniff ? 'Kniff (von der App vorgegeben): ' + u.kniff : 'Kniff: keine Vorgabe');
+    if (u.tonart) z.push('Tonart (von der App vorgegeben): ' + u.tonart);
+  } else z.push('Aufgabe: ' + u.aufgabe);
   if (u.modus === 'rede') z.push('Aufbau: ' + aufbauName(u));
   if (u.einstieg) z.push('Einstieg (von der App vorgegeben): ' + u.einstieg);
   z.push('Bildausschnitt: ' + (u.typ === 'ton' ? 'nur Ton' : u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'nah'));
@@ -71,6 +77,7 @@ export function paketText(u, opt = {}) {
   if (opt.ohneWunsch) return z.join('\n');
   if (u.aufbau === 'these') z.push('', 'MASSSTAB ÜBERZEUGUNGSREDE', 'Die Aufgabe ist eine These, die verteidigt wird. Prüfe das ganze Gerüst: den vorgegebenen Einstieg, drei verschieden gestützte Argumente, ein Was-wäre-wenn-Bild für den Fall, dass niemand handelt, die Wiederholung der drei Punkte, eine klare Handlungsaufforderung und danach einen gesetzten Schlusspunkt. Nenne die Stelle, an der der vorgegebene Einstieg umgesetzt ist, oder sag, dass er fehlt.');
   if (u.aufbau === 'geschichte') z.push('', 'MASSSTAB GESCHICHTE', 'Die Aufgabe ist eine persönliche Geschichte in der vorgegebenen Zeit. Maßstab: ein einziges Erlebnis, Einstieg mitten in der Szene mit Ort und Zeit, Gegenwartsform, ein Wendepunkt, ein Schlusssatz mit der Lehre daraus. Das Gerüst mit drei Argumenten gilt hier nicht.');
+  if (u.modus === 'pitch') z.push('', 'MASSSTAB PITCH', 'Das ist ein Pitch: die Kurzvorstellung des eigenen Angebots vor einem Netzwerk, in dem viele nacheinander sprechen. Bewerte nach dem Abschnitt „Modus Pitch“ deiner Anweisung: zuerst die Zeit, dann ob der Pitch auffällt und hängen bleibt, ob klar wird, was die Person für wen tut, ob eine konkrete Handlungsaufforderung kommt und ob der Schluss sitzt.' + (u.kniff ? ' Prüfe, ob der vorgegebene Kniff und die Tonart umgesetzt sind, und nenne die Stelle.' : '') + ' Schreib am Ende unter „So hätte dein Pitch klingen können“ einen Pitch wörtlich aus, der in die Soll-Zeit passt. Nutze dafür nur, was im Paket über das Angebot steht, und erfinde nichts dazu.');
   if (u.modus === 'schlag') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt einer Musterantwort eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diese Aussage, jede mit einer anderen Technik. Nenne zu jeder Variante die Technik und schreib die Antwort wörtlich aus, höchstens drei Sätze.');
   if (u.modus === 'einwand') z.push('', 'AUFLÖSUNG GEWÜNSCHT', 'Gib nach der Bewertung statt eines einzelnen alternativen Bildes eine Auflösung unter der Überschrift „So hättest du es sagen können“: drei verschiedene Musterantworten auf genau diesen Einwand, jede mit einem bildhaften Vergleich aus einer anderen Welt und mit der Brücke „Und genauso ist es mit …“. Schreib jede Antwort wörtlich aus, höchstens drei Sätze.');
   return z.join('\n');

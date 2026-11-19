@@ -1,7 +1,7 @@
 // Export für Klara (eine Übung als Markdown-Datei) und Sicherung des Verlaufs (alles außer den Aufnahmen als Datei).
-import { paketText } from './auswertung.js?v=2204';
-import { alleUebungen, uebungLaden, uebungSpeichern } from './db.js?v=2204';
-import { entwirren } from './auto.js?v=2204';
+import { paketText } from './auswertung.js?v=2300';
+import { alleUebungen, uebungLaden, uebungSpeichern } from './db.js?v=2300';
+import { entwirren } from './auto.js?v=2300';
 
 // Datei über das Teilen-Menü abgeben (AirDrop, Dateien). Geht das nicht, als Download.
 // Muss direkt im Antippen laufen, die Datei also vorher fertig sein.
@@ -37,7 +37,7 @@ export function klaraDatei(u) {
 
 // ---------- Sicherung des Verlaufs ----------
 // Diese Einträge aus dem Speicher des Browsers wandern mit. Der Schlüssel der Anthropic-Schnittstelle bleibt bewusst draußen.
-const MIT = ['rt.einstellungen', 'rt.begriffe.eigene', 'rt.impulse.eigene', 'rt.einwand.eigene', 'rt.begriffe.verbraucht', 'rt.impulse.verbraucht', 'rt.api.coach', 'rt.api.modell'];
+const MIT = ['rt.einstellungen', 'rt.begriffe.eigene', 'rt.impulse.eigene', 'rt.einwand.eigene', 'rt.begriffe.verbraucht', 'rt.impulse.verbraucht', 'rt.pitch', 'rt.pitch.verbraucht', 'rt.api.coach', 'rt.api.modell'];
 const LISTEN = ['rt.begriffe.eigene', 'rt.impulse.eigene', 'rt.einwand.eigene'];
 
 export async function sicherungBauen() {

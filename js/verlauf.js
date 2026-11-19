@@ -1,12 +1,12 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue, istOffen, merkeOffen } from './ui.js?v=2204';
-import { fmtZeit } from './store.js?v=2204';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2204';
-import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2204';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2204';
-import { entwirren } from './auto.js?v=2204';
+import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue, istOffen, merkeOffen } from './ui.js?v=2300';
+import { fmtZeit } from './store.js?v=2300';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2300';
+import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2300';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2300';
+import { entwirren } from './auto.js?v=2300';
 
-const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
+const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand', pitch: 'Pitch' };
 const komma = (x) => String(x).replace('.', ',');
 const tag = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const kurz = (iso) => new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });

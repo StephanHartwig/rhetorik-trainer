@@ -1,19 +1,20 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2204';
-import { h, fuelle, kopf, chips, regler, klappe, geheZu, REDEZEITEN, klappenVergessen, merkeHerkunft } from './ui.js?v=2204';
-import { redeAblauf } from './rede.js?v=2204';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=2204';
-import { verlaufSeite, startInfo } from './verlauf.js?v=2204';
-import { autoSeite } from './auto-seite.js?v=2204';
-import { lauf, laufend } from './messlauf.js?v=2204';
-import { autoStand } from './auto.js?v=2204';
-import { eigeneBegriffe } from './begriffe.js?v=2204';
-import { eigene } from './impulse.js?v=2204';
-import { heuteSeite, heuteStand } from './heute.js?v=2204';
-import { stimmeSeite } from './stimme.js?v=2204';
-import { merkSeite } from './merk.js?v=2204';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2300';
+import { h, fuelle, kopf, chips, regler, klappe, geheZu, REDEZEITEN, klappenVergessen, merkeHerkunft } from './ui.js?v=2300';
+import { redeAblauf } from './rede.js?v=2300';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=2300';
+import { verlaufSeite, startInfo } from './verlauf.js?v=2300';
+import { autoSeite } from './auto-seite.js?v=2300';
+import { lauf, laufend } from './messlauf.js?v=2300';
+import { autoStand } from './auto.js?v=2300';
+import { eigeneBegriffe } from './begriffe.js?v=2300';
+import { eigene } from './impulse.js?v=2300';
+import { heuteSeite, heuteStand } from './heute.js?v=2300';
+import { stimmeSeite } from './stimme.js?v=2300';
+import { merkSeite } from './merk.js?v=2300';
+import { PITCHZEITEN } from './pitch.js?v=2300';
 
-const VERSION = 2204;
+const VERSION = 2300;
 // Ab 20.1 steckt die Unterstufe in der Zahl: 2001 wird als „20.1“ angezeigt.
 const fassungText = (n) => (n >= 1000 ? Math.floor(n / 100) + '.' + (n % 100) : String(n));
 const app = document.getElementById('app');
@@ -25,7 +26,7 @@ const merke = (k, v) => { E[k] = v; Object.assign(E, speichern(E)); };
 let neueFassung = null;
 fetch('index.html?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => {
   const m = t.match(/app\.js\?v=(\d+)/);
-  if (m && Number(m[1]) !== VERSION) { neueFassung = m[1]; if (!/^#\/(rede|schlag|einwand|heute|stimme|ruhe)/.test(location.hash)) zeigen(); }
+  if (m && Number(m[1]) !== VERSION) { neueFassung = m[1]; if (!/^#\/(rede|schlag|einwand|pitch|heute|stimme|ruhe)/.test(location.hash)) zeigen(); }
 }).catch(() => {});
 function updateKnopf() {
   if (!neueFassung) return null;
@@ -48,9 +49,10 @@ function start() {
       h('button', { class: 'kachel', onclick: () => geheZu('#/rede') }, 'Stegreifrede'),
       h('button', { class: 'kachel', onclick: () => geheZu('#/schlag') }, 'Schlagfertigkeit'),
       h('button', { class: 'kachel', onclick: () => geheZu('#/einwand') }, 'Einwand'),
+      h('button', { class: 'kachel', onclick: () => geheZu('#/pitch') }, 'Pitch'),
       h('button', { class: 'kachel', onclick: () => geheZu('#/stimme') }, 'Stimme aufwärmen'),
       h('button', { class: 'kachel', onclick: () => geheZu('#/ruhe') }, 'Aufregung dämpfen'),
-      h('button', { class: 'kachel', onclick: () => geheZu('#/merk') }, 'Merkzettel')),
+      h('button', { class: 'kachel breitKachel', onclick: () => geheZu('#/merk') }, 'Merkzettel')),
     h('button', { class: 'breit', onclick: () => geheZu('#/verlauf') }, 'Verlauf'),
     h('div', { class: 'fuss warn' }, 'Vor dem Üben: Stromsparmodus aus (Batterie-Symbol nicht gelb).'),
   ];
@@ -89,6 +91,8 @@ function einstellungen() {
   const fach = regler({ min: 0, max: 100, schritt: 1, knopf: 1, wert: E.fachAnteil, text: (v) => v + ' %', beiWechsel: (v) => merke('fachAnteil', v) });
   const wert = (t) => h('span', { class: 'wert' }, t);
   const signalText = () => (E.signal ? E.signal + ' s' : 'aus'), transText = () => (E.transkript === 'gross' ? 'genau' : 'schnell');
+  const pitchWert = wert(E.pitchzeit + ' s');
+  const pitchChips = chips(PITCHZEITEN, E.pitchzeit, (v) => { merke('pitchzeit', v); pitchWert.textContent = v + ' s'; });
   const signalWert = wert(signalText()), aufbauWert = wert(E.aufbau), transWert = wert(transText());
   const signalChips = chips([[0, 'aus'], [10, '10 s'], [30, '30 s'], [60, '60 s']], E.signal, (v) => { merke('signal', v); signalWert.textContent = signalText(); hinweise(); });
   const aufbauChips = chips([['klassisch', 'klassisch'], ['frei', 'frei']], E.aufbau, (v) => { merke('aufbau', v); aufbauWert.textContent = E.aufbau; });
@@ -108,6 +112,8 @@ function einstellungen() {
       klappe('e.vorb', 'Vorbereitung', vorb.anzeige, vorb.zeile),
       klappe('e.schlag', 'Antwort Schlagfertigkeit', schlag.anzeige, schlag.zeile),
       klappe('e.einw', 'Antwort Einwand', einw.anzeige, einw.zeile),
+      klappe('e.pitch', 'Dauer des Pitchs', pitchWert, pitchChips.el,
+        h('div', { class: 'hinweis' }, 'So lange darfst du in deinem Netzwerk sprechen. Am Ende der Zeit ertönen drei Töne.')),
       klappe('e.signal', 'Signalton vor Schluss', signalWert, signalChips.el, signalHinweis)),
     h('h2', {}, 'Rede und Messung'),
     h('div', { class: 'stapel' },
@@ -149,7 +155,7 @@ function zeigen() {
   if (pfad === 'rede') { aufraeumen = redeAblauf(app, E, merke); return; }
   if (pfad.startsWith('uebung/')) { aufraeumen = uebungSeite(app, pfad.slice(7)); return; }
   if (pfad === 'verlauf') { aufraeumen = verlaufSeite(app); return; }
-  if (pfad === 'schlag' || pfad === 'einwand') { aufraeumen = redeAblauf(app, E, merke, { modus: pfad }); return; }
+  if (pfad === 'schlag' || pfad === 'einwand' || pfad === 'pitch') { aufraeumen = redeAblauf(app, E, merke, { modus: pfad }); return; }
   if (pfad === 'heute') { aufraeumen = heuteSeite(app, E, merke, zeigen); return; }
   if (pfad === 'stimme' || pfad === 'ruhe') { aufraeumen = stimmeSeite(app, pfad); return; }
   if (pfad === 'merk') { aufraeumen = merkSeite(app); return; }

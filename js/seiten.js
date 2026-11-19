@@ -1,18 +1,18 @@
 // Ergebnis einer Übung, Verlaufsliste, eigene Begriffe
-import { h, fuelle, kopf, geheZu, datumText, mb, klappe, menue, zurueckZiel } from './ui.js?v=2204';
-import { fmtZeit, laden } from './store.js?v=2204';
-import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2204';
-import { koerperMessen } from './koerper.js?v=2204';
-import { coachTeil } from './coach.js?v=2204';
-import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2204';
-import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2204';
-import { artName, aufbauName } from './auswertung.js?v=2204';
-import * as I from './impulse.js?v=2204';
-import { messen, MODELLE, luftHolen } from './messung.js?v=2204';
-import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2204';
-import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2204';
+import { h, fuelle, kopf, geheZu, datumText, mb, klappe, menue, zurueckZiel } from './ui.js?v=2300';
+import { fmtZeit, laden } from './store.js?v=2300';
+import { uebungLaden, alleUebungen, uebungLoeschen, aufnahmeDatei, speicherStand, uebungSpeichern, bilderLaden, stueckeLaden, pcmLaden } from './db.js?v=2300';
+import { koerperMessen } from './koerper.js?v=2300';
+import { coachTeil } from './coach.js?v=2300';
+import { eigeneBegriffe, eigenenHinzufuegen, eigenenLoeschen } from './begriffe.js?v=2300';
+import { klaraDatei, dateiAbgeben } from './sicherung.js?v=2300';
+import { artName, aufbauName } from './auswertung.js?v=2300';
+import * as I from './impulse.js?v=2300';
+import { messen, MODELLE, luftHolen } from './messung.js?v=2300';
+import { wachAn, wachAus, wachOk, erkennungSchliessen } from './geraet.js?v=2300';
+import { lauf, laufend, koerperModus, setzeKoerperModus, absturzPruefen } from './messlauf.js?v=2300';
 
-const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
+const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand', pitch: 'Pitch' };
 const ENDE = { speicherfehler: 'Fehler beim Speichern', abbruch: 'Aufnahme wurde unterbrochen', tippen: 'Fertig getippt', handzeichen: 'Handzeichen', schweigen: 'Schweigen', automatisch: 'automatisch nach 10 Minuten Überziehung' };
 
 export function abweichung(u) {
@@ -78,7 +78,9 @@ function zeitKlappe(u) {
       u.beendetDurch ? zeile('Beendet durch', ENDE[u.beendetDurch] || u.beendetDurch) : null,
       zeile('Bildausschnitt', u.ausschnitt === 'ganz' ? 'Ganzkörper' : 'Nah'),
       u.aufbau === 'klassisch' || u.aufbau === 'frei' ? zeile('Aufbau', aufbauName(u)) : null,
-      u.einstieg ? zeile('Einstieg', u.einstieg) : null));
+      u.einstieg ? zeile('Einstieg', u.einstieg) : null,
+      u.kniff ? zeile('Kniff', u.kniff) : null,
+      u.tonart ? zeile('Tonart', u.tonart) : null));
 }
 
 // ---------- Messwerte (Schätzungen des Geräts) ----------

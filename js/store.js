@@ -7,6 +7,8 @@ export const STANDARD = {
   vorbereitung: 10,     // Sekunden
   antwortSchlag: 30,    // Sekunden, Schlagfertigkeit
   antwortEinwand: 60,   // Sekunden, Einwand
+  pitchzeit: 45,        // Sekunden, Pitch: 30, 45 oder 60
+  pitchVorgabe: 'kniff',// 'kniff' (die App gibt einen Kniff vor) oder 'frei'
   signal: 30,           // Sekunden vor Schluss, 0 = aus
   aufbau: 'klassisch',  // 'klassisch' oder 'frei' (gilt für die Rede über einen Begriff)
   redeArt: 'begriff',   // 'begriff', 'these' (Überzeugungsrede) oder 'geschichte'
@@ -23,7 +25,7 @@ export const GRENZEN = {
   fachAnteil: [0, 100],
 };
 
-const ERLAUBT = { signal: [0, 10, 30, 60], aufbau: ['klassisch', 'frei'], redeArt: ['begriff', 'these', 'geschichte'], ausschnitt: ['nah', 'ganz'], transkript: ['mittel', 'gross'] };
+const ERLAUBT = { signal: [0, 10, 30, 60], pitchzeit: [30, 45, 60], pitchVorgabe: ['kniff', 'frei'], aufbau: ['klassisch', 'frei'], redeArt: ['begriff', 'these', 'geschichte'], ausschnitt: ['nah', 'ganz'], transkript: ['mittel', 'gross'] };
 
 function pruefen(e) {
   const out = { ...STANDARD };

@@ -1,6 +1,6 @@
 // Begriffe ziehen: zufällig, ohne Wiederholung, bis ein Vorrat durch ist.
 // Die eingebaute Liste wird nirgends angezeigt. Nur eigene Begriffe sind einsehbar.
-import { BEGRIFFE } from './begriffe-daten.js?v=2204';
+import { BEGRIFFE } from './begriffe-daten.js?v=2300';
 
 const K_VERBRAUCHT = 'rt.begriffe.verbraucht';
 const K_EIGENE = 'rt.begriffe.eigene';
