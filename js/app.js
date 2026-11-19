@@ -1,19 +1,19 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2202';
-import { h, fuelle, kopf, chips, regler, klappe, geheZu, REDEZEITEN, klappenVergessen, merkeHerkunft } from './ui.js?v=2202';
-import { redeAblauf } from './rede.js?v=2202';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=2202';
-import { verlaufSeite, startInfo } from './verlauf.js?v=2202';
-import { autoSeite } from './auto-seite.js?v=2202';
-import { lauf, laufend } from './messlauf.js?v=2202';
-import { autoStand } from './auto.js?v=2202';
-import { eigeneBegriffe } from './begriffe.js?v=2202';
-import { eigene } from './impulse.js?v=2202';
-import { heuteSeite, heuteStand } from './heute.js?v=2202';
-import { stimmeSeite } from './stimme.js?v=2202';
-import { merkSeite } from './merk.js?v=2202';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2203';
+import { h, fuelle, kopf, chips, regler, klappe, geheZu, REDEZEITEN, klappenVergessen, merkeHerkunft } from './ui.js?v=2203';
+import { redeAblauf } from './rede.js?v=2203';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=2203';
+import { verlaufSeite, startInfo } from './verlauf.js?v=2203';
+import { autoSeite } from './auto-seite.js?v=2203';
+import { lauf, laufend } from './messlauf.js?v=2203';
+import { autoStand } from './auto.js?v=2203';
+import { eigeneBegriffe } from './begriffe.js?v=2203';
+import { eigene } from './impulse.js?v=2203';
+import { heuteSeite, heuteStand } from './heute.js?v=2203';
+import { stimmeSeite } from './stimme.js?v=2203';
+import { merkSeite } from './merk.js?v=2203';
 
-const VERSION = 2202;
+const VERSION = 2203;
 // Ab 20.1 steckt die Unterstufe in der Zahl: 2001 wird als „20.1“ angezeigt.
 const fassungText = (n) => (n >= 1000 ? Math.floor(n / 100) + '.' + (n % 100) : String(n));
 const app = document.getElementById('app');

@@ -1,10 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue, istOffen, merkeOffen } from './ui.js?v=2202';
-import { fmtZeit } from './store.js?v=2202';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2202';
-import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2202';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2202';
-import { entwirren } from './auto.js?v=2202';
+import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue, istOffen, merkeOffen } from './ui.js?v=2203';
+import { fmtZeit } from './store.js?v=2203';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2203';
+import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2203';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2203';
+import { entwirren } from './auto.js?v=2203';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -86,7 +86,6 @@ const RUBRIKEN = ['Stegreifrede', 'Überzeugungsrede', 'Geschichte', 'Schlagfert
 export function verlaufSeite(app) {
   let aktiv = true;
   fuelle(app, kopf('Verlauf'), h('p', { class: 'grau' }, 'Lade …'));
-  let auswahl = null;                 // null = normale Liste, sonst die Menge der angekreuzten Übungen
   async function lade() {
     const [gesamt, st] = await Promise.all([alleUebungen(), speicherStand()]);
     if (!aktiv) return;
@@ -94,7 +93,7 @@ export function verlaufSeite(app) {
     const vorhanden = RUBRIKEN.filter((r) => gesamt.some((u) => artName(u) === r));
     if (!vorhanden.includes(rubrik)) rubrik = 'alle';
     const liste = rubrik === 'alle' ? gesamt : gesamt.filter((u) => artName(u) === rubrik);
-    const wahl = h('select', { class: 'auswahl', 'aria-label': 'Rubrik', onchange: () => { rubrik = wahl.value; auswahl = null; lade(); } },
+    const wahl = h('select', { class: 'auswahl', 'aria-label': 'Rubrik', onchange: () => { rubrik = wahl.value; lade(); } },
       h('option', { value: 'alle' }, 'Alle Übungen (' + gesamt.length + ')'),
       vorhanden.map((r) => h('option', { value: r }, r + ' (' + gesamt.filter((u) => artName(u) === r).length + ')')));
     wahl.value = rubrik;
@@ -128,46 +127,67 @@ export function verlaufSeite(app) {
       kurvenBox,
       h('p', { class: 'grau' }, 'Aufnahmen belegen ' + mb(summe) + (st ? ' · frei: ' + mb(st.frei) : '') + '.'));
 
-    // Liste der Übungen: Antippen öffnet eine Übung. „Auswählen“ kreuzt eine oder mehrere zum Löschen an.
+    // Liste der Übungen: Antippen öffnet eine Übung. Wischen nach links oder rechts legt „Löschen“ frei, wie in den Listen des iPhones.
     function uebungsListe(liste) {
-      const loesche = async (ids, frage) => {
-        if (!confirm(frage)) return;
-        for (const id of ids) { try { await uebungLoeschen(id); } catch (e) {} }
-        auswahl = null;
+      const BREIT = 96;                       // so weit fährt eine Zeile zur Seite
+      const titel = h('div', { class: 'listenKopf' });
+      const zeilen = h('div', { class: 'stapel rollListe' });
+      const tipp = h('p', { class: 'grau' }, 'Zum Löschen eine Übung zur Seite wischen.');
+      let offene = null;                      // die Zeile, die gerade zur Seite geschoben ist
+      const schliesse = () => { if (offene) { offene.setze(0, true); offene = null; } };
+      const loesche = async (u) => {
+        if (!confirm('Diese Übung mit Aufnahme endgültig löschen?')) { schliesse(); return; }
+        try { await uebungLoeschen(u.id); } catch (e) {}
         if (aktiv) lade();
       };
-      const titel = h('div', { class: 'listenKopf' });
-      const leiste = h('div', { class: 'wahlLeiste' });
-      // Die Liste rollt in einem eigenen Kasten, damit „Entwicklung“ gleich darunter erreichbar bleibt.
-      const zeilen = h('div', { class: 'stapel rollListe' });
+      function zeile(u) {
+        const knopf = h('button', { class: 'reihe eintrag' },
+          h('span', { class: 'eInhalt' },
+            h('span', { class: 'e1', lang: 'de' }, u.aufgabe),
+            // Nur das Nötigste: Datum, Dauer, Art. Alles Weitere steht in der geöffneten Übung.
+            h('span', { class: 'e2' }, [tag(u.datum), u.status === 'fertig' ? fmtZeit(u.ist) : 'nicht sauber beendet', artName(u)].join(' · '))),
+          u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null,
+          h('span', { class: 'pfeil' }, '›'));
+        const weg = (seite) => h('button', { class: 'wischLoesch ' + seite, 'aria-label': 'Übung löschen', onclick: () => loesche(u) }, 'Löschen');
+        const huelle = h('div', { class: 'wisch' }, weg('links'), weg('rechts'), knopf);
+        let x = 0, x0 = 0, y0 = 0, start = 0, richtung = '', gewischt = false;
+        const selbst = { setze(v, weich) { x = v; knopf.style.transition = weich ? 'transform .18s' : 'none'; knopf.style.transform = v ? 'translateX(' + v + 'px)' : ''; huelle.classList.toggle('offen', v !== 0); } };
+        knopf.addEventListener('touchstart', (ev) => {
+          if (ev.touches.length !== 1) return;
+          if (offene && offene !== selbst) schliesse();
+          x0 = ev.touches[0].clientX; y0 = ev.touches[0].clientY; start = x; richtung = ''; gewischt = false;
+        }, { passive: true });
+        knopf.addEventListener('touchmove', (ev) => {
+          const dx = ev.touches[0].clientX - x0, dy = ev.touches[0].clientY - y0;
+          if (!richtung) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; richtung = Math.abs(dx) > Math.abs(dy) ? 'quer' : 'hoch'; }
+          if (richtung !== 'quer') return;            // senkrecht: die Liste rollt
+          if (ev.cancelable) ev.preventDefault();
+          gewischt = true;
+          selbst.setze(Math.max(-BREIT, Math.min(BREIT, start + dx)), false);
+        }, { passive: false });
+        const ende = () => {
+          if (richtung !== 'quer') return;
+          const ziel = x <= -BREIT / 2 ? -BREIT : x >= BREIT / 2 ? BREIT : 0;
+          selbst.setze(ziel, true); offene = ziel ? selbst : (offene === selbst ? null : offene);
+        };
+        knopf.addEventListener('touchend', ende);
+        knopf.addEventListener('touchcancel', ende);
+        knopf.addEventListener('click', (ev) => {
+          if (gewischt) { gewischt = false; ev.preventDefault(); return; }       // das Wischen selbst ist kein Antippen
+          if (x) { schliesse(); return; }                                         // offene Zeile: Antippen schiebt sie zurück
+          geheZu('#/uebung/' + u.id);
+        });
+        return huelle;
+      }
       function zeichne() {
-        const n = auswahl ? auswahl.size : 0;
-        const zu = !istOffen('verlauf.liste') && !auswahl;
-        zeilen.hidden = zu;
-        fuelle(titel, h('button', { class: 'klappKopf', 'aria-expanded': String(!zu), onclick: () => { merkeOffen('verlauf.liste', zu); auswahl = null; zeichne(); } },
-            h('h2', {}, 'Übungen (' + liste.length + ')'), h('span', { class: 'winkel' + (zu ? '' : ' auf') }, '›')),
-          h('button', { class: 'pille' + (auswahl ? ' an' : ''), onclick: () => { auswahl = auswahl ? null : new Set(); merkeOffen('verlauf.liste', true); zeichne(); } }, auswahl ? 'Fertig' : 'Auswählen'));
-        fuelle(leiste, !auswahl ? null : [
-          h('div', { class: 'hinweis' }, 'Tippe die Übungen an, die du löschen willst.'),
-          h('div', { class: 'zwei' },
-            h('button', { class: 'breit', onclick: () => { auswahl = n === liste.length ? new Set() : new Set(liste.map((u) => u.id)); zeichne(); } }, n === liste.length ? 'Keine auswählen' : 'Alle auswählen'),
-            h('button', { class: 'breit rot', disabled: !n, onclick: () => loesche([...auswahl], n === 1 ? 'Diese Übung mit Aufnahme endgültig löschen?' : n + ' Übungen mit Aufnahmen endgültig löschen?') }, n ? n + ' löschen' : 'Löschen')),
-        ]);
-        fuelle(zeilen, liste.map((u) => {
-          const an = auswahl && auswahl.has(u.id);
-          return h('button', { class: 'reihe eintrag' + (an ? ' an' : ''), 'aria-pressed': auswahl ? String(!!an) : null,
-            onclick: () => { if (!auswahl) { geheZu('#/uebung/' + u.id); return; } if (an) auswahl.delete(u.id); else auswahl.add(u.id); zeichne(); } },
-            auswahl ? h('span', { class: 'haken' }, an ? '✓' : '') : null,
-            h('span', { class: 'eInhalt' },
-              h('span', { class: 'e1', lang: 'de' }, u.aufgabe),
-              // Nur das Nötigste: Datum, Dauer, Art. Alles Weitere steht in der geöffneten Übung.
-              h('span', { class: 'e2' }, [tag(u.datum), u.status === 'fertig' ? fmtZeit(u.ist) : 'nicht sauber beendet', artName(u)].join(' · '))),
-            u.ergebnis ? h('span', { class: 'note' }, u.ergebnis.note) : null,
-            auswahl ? null : h('span', { class: 'pfeil' }, '›'));
-        }));
+        const zu = !istOffen('verlauf.liste');
+        zeilen.hidden = zu; tipp.hidden = zu || !liste.length;
+        fuelle(titel, h('button', { class: 'klappKopf', 'aria-expanded': String(!zu), onclick: () => { merkeOffen('verlauf.liste', zu); offene = null; zeichne(); } },
+          h('h2', {}, 'Übungen (' + liste.length + ')'), h('span', { class: 'winkel' + (zu ? '' : ' auf') }, '›')));
+        fuelle(zeilen, liste.map(zeile));
       }
       zeichne();
-      return [titel, leiste, zeilen];
+      return [titel, zeilen, tipp];
     }
   }
   lade().catch((e) => { if (!aktiv) return; const sich = sicherungTeil(0); fuelle(app, kopf('Verlauf', { rechts: menue(() => [{ text: 'Verlauf einlesen', tun: sich.einlesen }]) }), h('p', { class: 'hinweis fehler' }, 'Der Verlauf lässt sich nicht anzeigen: ' + e.message), sich.el); });
