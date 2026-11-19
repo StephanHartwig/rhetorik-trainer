@@ -1,10 +1,19 @@
 // Gerätefunktionen: Kamera, Ton (Signal, Pegel), Bildschirm an, Aufnahme
-import { stueckSpeichern, pcmSpeichern } from './db.js?v=2107';
+import { stueckSpeichern, pcmSpeichern } from './db.js?v=2200';
 
 // ---------- Kamera und Mikrofon ----------
 let stream;
+// Liefert die Kamera noch Bild und Ton? Nach einem Wechsel in eine andere App oder einem Anruf beendet das iPhone die Spuren.
+export function stromLebt(s) {
+  if (!s || !s.active) return false;
+  const spuren = s.getTracks();
+  return spuren.some((t) => t.kind === 'video') && spuren.some((t) => t.kind === 'audio') && spuren.every((t) => t.readyState === 'live');
+}
+// Das iPhone schaltet das Kamerabild stumm, wenn die App im Hintergrund war: Dann käme nur Schwarz.
+export const bildFehlt = (s) => !!s && s.getVideoTracks().some((t) => t.muted);
 export async function kameraAn() {
-  if (stream && stream.active) return stream;
+  if (stromLebt(stream)) return stream;
+  kameraAus();
   stream = await navigator.mediaDevices.getUserMedia({
     audio: true,
     video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
@@ -120,7 +129,12 @@ export function aufnahmeStarten(s, id, nurTon) {
   const fertig = new Promise((res) => { rec.onstop = () => kette.then(() => res({ mime: rec.mimeType || mime, groesse, stuecke: n, fehler })); });
   rec.start(5000);
   return {
-    stopp() { if (rec.state !== 'inactive') rec.stop(); return fertig; },
+    // Meldet sich die Aufnahme nach dem Stoppen nicht mehr (zum Beispiel weil die Kamera ausgefallen ist), geht es nach 15 Sekunden trotzdem weiter.
+    stopp() {
+      try { if (rec.state !== 'inactive') rec.stop(); } catch (e) { fehler = fehler || e; }
+      const ersatz = new Promise((res) => setTimeout(() => kette.then(() => res({ mime: rec.mimeType || mime, groesse, stuecke: n, fehler: fehler || new Error('Die Aufnahme wurde nicht sauber abgeschlossen') })), 15000));
+      return Promise.race([fertig, ersatz]);
+    },
     get fehler() { return fehler; },
   };
 }
@@ -129,7 +143,7 @@ export function aufnahmeStarten(s, id, nurTon) {
 let wlModul;
 export function pcmVorbereiten() {
   if (!ctx || !ctx.audioWorklet) return Promise.reject(new Error('kein AudioWorklet'));
-  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=2107').catch((e) => { wlModul = null; throw e; }));
+  return wlModul || (wlModul = ctx.audioWorklet.addModule('js/pcm-worklet.js?v=2200').catch((e) => { wlModul = null; throw e; }));
 }
 export async function pcmStarten(s, id) {
   await pcmVorbereiten();

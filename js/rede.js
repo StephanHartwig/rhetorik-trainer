@@ -1,11 +1,11 @@
 // Ablauf einer Übung mit Aufnahme (Stegreifrede, Schlagfertigkeit, Einwand):
 // Einrichten → Aufgabe (+ Vorbereitung) → Aufnahme mit Timer → Ergebnis
-import { h, fuelle, kopf, chips, gruppe, geheZu, REDEZEITEN, mb } from './ui.js?v=2107';
-import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2107';
-import { ziehe, zieheAus } from './begriffe.js?v=2107';
-import { zieheImpuls, zieheEinwand } from './impulse.js?v=2107';
-import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2107';
-import * as G from './geraet.js?v=2107';
+import { h, fuelle, kopf, chips, geheZu, REDEZEITEN, mb } from './ui.js?v=2200';
+import { fmtZeit, signalFuer, tagSchluessel } from './store.js?v=2200';
+import { ziehe, zieheAus } from './begriffe.js?v=2200';
+import { zieheImpuls, zieheEinwand } from './impulse.js?v=2200';
+import { uebungSpeichern, uebungLoeschen, speicherStand } from './db.js?v=2200';
+import * as G from './geraet.js?v=2200';
 
 const STILLE_SEK = 6;       // so lange Schweigen, dann Nachfrage (nur Ganzkörper)
 const FRAGE_SEK = 5;        // so lange läuft die Nachfrage
@@ -44,31 +44,68 @@ export function redeAblauf(app, E, merke, opt = {}) {
     if (messer) messer.stopp();
     G.kameraAus(); G.wachAus(); G.erkennungSchliessen();
     document.body.classList.remove('buehne');
+    document.removeEventListener('visibilitychange', sichtbar);
+    window.removeEventListener('pageshow', sichtbar);
   }
 
-  // ---------- Schritt 1 und 2: Ausschnitt, Redezeit, Kamerabild ----------
-  function einrichten() {
-    const meldung = h('div', { class: 'hinweis fehler' });
+  // ---------- Vor der Aufnahme: Kamerabild und die wenigen Angaben, die es braucht ----------
+  let gestartet = false, kameraNeu = null, beiSichtbar = null;
+  function einrichten(hinweisText) {
+    gestartet = false;
+    const meldung = h('div', { class: 'hinweis fehler' }, hinweisText || '');
+    const kameraStand = h('div', { class: 'hinweis' });
+    const neuKnopf = h('button', { class: 'breit', hidden: true, onclick: () => kameraStart(true) }, 'Kamera neu starten');
     const platz = h('div', { class: 'hinweis' });
-    const zeit = h('span', { class: 'wert' }, fmtZeit(sollZeit()));
     const zeitHinweis = h('div', { class: 'hinweis' });
     const ausHinweis = h('div', { class: 'hinweis' });
     const knopf = h('button', { class: 'gross', disabled: true, onclick: begriffZeigen }, heute ? 'Aufgabe ' + heute.nr + ' zeigen' : art().knopf);
-    let kameraBereit = false, platzReicht = true;
+    let kameraBereit = false, platzReicht = true, kameraLauf = 0, waechter = null, selbstNeu = 0;
     const knopfStand = () => { knopf.disabled = !(kameraBereit && platzReicht); };
+
+    // Kamera starten. Fällt sie aus (andere App, Anruf, Bildschirmsperre), startet sie von selbst neu, höchstens dreimal.
+    async function kameraStart(neu, text) {
+      const lauf = ++kameraLauf;
+      kameraBereit = false; knopfStand();
+      neuKnopf.hidden = true; kameraStand.textContent = 'Kamera startet …';
+      if (text !== undefined) meldung.textContent = text;
+      clearTimeout(waechter);
+      waechter = setTimeout(() => { if (aktiv && lauf === kameraLauf && !kameraBereit) { kameraStand.textContent = 'Die Kamera antwortet nicht.'; neuKnopf.hidden = false; } }, 8000);
+      try {
+        if (neu) G.kameraAus();
+        const s = await G.kameraAn();
+        if (!aktiv) { G.kameraAus(); return; }
+        if (lauf !== kameraLauf) return;
+        strom = s; video.srcObject = s; video.play().catch(() => {});
+        s.getTracks().forEach((t) => t.addEventListener('ended', () => {
+          if (!aktiv || strom !== s || gestartet) return;            // auf der Bühne kümmert sich der Takt darum
+          if (++selbstNeu <= 3) kameraStart(true, 'Die Kamera war unterbrochen und wurde neu gestartet.');
+          else { kameraBereit = false; knopfStand(); meldung.textContent = 'Die Kamera fällt immer wieder aus.'; neuKnopf.hidden = false; }
+        }));
+        kameraBereit = true; kameraStand.textContent = ''; clearTimeout(waechter);
+      } catch (e) {
+        if (!aktiv || lauf !== kameraLauf) return;
+        clearTimeout(waechter);
+        kameraStand.textContent = ''; meldung.textContent = G.kameraFehlerText(e); neuKnopf.hidden = false;
+      }
+      knopfStand();
+    }
+    kameraNeu = (text) => kameraStart(true, text);
+    // Zurück aus einer anderen App: prüfen, ob die Kamera noch Bild und Ton liefert.
+    beiSichtbar = () => {
+      if (!aktiv || gestartet || document.visibilityState !== 'visible') return;
+      if (kameraBereit && !G.stromLebt(strom)) { kameraStart(true, ''); return; }
+      if (!kameraBereit) return;
+      video.play().catch(() => {});
+      // Bleibt das Bild nach der Rückkehr schwarz, die Kamera neu starten.
+      const s = strom;
+      setTimeout(() => { if (aktiv && !gestartet && strom === s && G.bildFehlt(s)) kameraStart(true, ''); }, 1500);
+    };
 
     async function hinweise() {
       const soll = sollZeit();
-      zeit.textContent = fmtZeit(soll);
-      const teile = [];
-      if (soll > 1200) teile.push('Über 20 Minuten wird nur der Ton aufgenommen, kein Video.');
-      const s = signalFuer(E, soll);
-      teile.push(s && s < soll ? 'Signalton ' + s + ' Sekunden vor Schluss.' : 'Kein Signalton.');
-      if (modus !== 'rede') teile.push('Die Antwortzeit änderst du im Zahnrad.');
-      zeitHinweis.textContent = teile.join(' ');
+      zeitHinweis.textContent = soll > 1200 ? 'Über 20 Minuten wird nur der Ton aufgenommen, kein Video.' : '';
       ausHinweis.textContent = E.ausschnitt === 'ganz'
-        ? '2 bis 3 Meter Abstand, ganzer Körper im Bild. Beenden aus der Entfernung: beide Hände über den Kopf heben oder ' + STILLE_SEK + ' Sekunden schweigen.'
-        : 'Gesicht und Schultern im Bild. Beenden mit „Fertig“.';
+        ? '2 bis 3 Meter Abstand, ganzer Körper im Bild. Beenden aus der Entfernung: beide Hände über den Kopf heben oder ' + STILLE_SEK + ' Sekunden schweigen.' : '';
       const st = await speicherStand();
       if (!st) return;
       const laengste = heute ? Math.max(E.redezeit, E.antwortSchlag) : soll;
@@ -80,40 +117,49 @@ export function redeAblauf(app, E, merke, opt = {}) {
       knopfStand();
     }
     const ausChips = chips([['nah', 'Nah (Gesicht)'], ['ganz', 'Ganzkörper']], E.ausschnitt, (v) => { merke('ausschnitt', v); hinweise(); });
-    const zeitChips = chips(REDEZEITEN, E.redezeit, (v) => { merke('redezeit', v); hinweise(); });
-    // Art der Rede: wechselt Knopf, Erklärung und die Zeitwahl
+    // Redezeit als Auswahlliste. Eine eigene Zeit aus den Einstellungen steht mit in der Liste.
+    const zeitName = (v) => (v < 60 ? v + ' Sekunden' : v % 60 ? fmtZeit(v) + ' Minuten' : v / 60 + (v === 60 ? ' Minute' : ' Minuten'));
+    const zeiten = REDEZEITEN.map(([v]) => v);
+    if (!zeiten.includes(E.redezeit)) { zeiten.push(E.redezeit); zeiten.sort((x, y) => x - y); }
+    const zeitWahl = h('select', { class: 'auswahl', 'aria-label': 'Redezeit', onchange: () => { merke('redezeit', Number(zeitWahl.value)); hinweise(); } },
+      zeiten.map((v) => h('option', { value: String(v) }, zeitName(v))));
+    zeitWahl.value = String(E.redezeit);
+    // Art der Rede: wechselt Knopf und Erklärung
     const satz = h('p', { class: 'grau' });
-    const zeitWahl = h('div', {}, h('div', { class: 'hinweis' }, 'Minuten'), zeitChips.el);
     const artStand = () => {
       if (heute) { satz.textContent = 'Was kommt, siehst du erst nach dem Antippen. Kein Tauschen, kein Überspringen.'; return; }
       knopf.textContent = art().knopf; satz.textContent = art().satz;
     };
     const artChips = chips([['begriff', 'Begriff'], ['these', 'Überzeugung'], ['geschichte', 'Geschichte']], E.redeArt, (v) => { merke('redeArt', v); artStand(); hinweise(); });
+    const wahl = (name, ...inhalt) => h('div', { class: 'wahlReihe' }, h('span', { class: 'name' }, name), inhalt);
 
-    fuelle(app, 
+    fuelle(app,
       kopf(heute ? 'Heute üben' : ART[modus].titel),
       heute ? h('div', { class: 'begriffTitel' }, 'Aufgabe ' + heute.nr + ' von 2') : null,
       heute && heute.nr === 2 ? h('p', {}, 'Aufgabe 1 ist geschafft. Die Auswertung machst du nach beiden Aufgaben.') : null,
-      video, meldung,
-      gruppe('Bildausschnitt', null, ausChips.el, ausHinweis),
-      heute || modus !== 'rede' ? null : gruppe('Art der Rede', null, artChips.el),
-      heute ? null : modus === 'rede'
-        ? gruppe('Redezeit', zeit, zeitWahl, zeitHinweis)
-        : gruppe('Antwortzeit', zeit, zeitHinweis),
+      video, kameraStand, meldung, neuKnopf,
+      h('div', { class: 'stapel' },
+        heute || modus !== 'rede' ? null : wahl('Art der Rede', artChips.el),
+        heute ? null : modus === 'rede' ? wahl('Redezeit', zeitWahl, zeitHinweis)
+          : wahl('Antwortzeit', h('div', { class: 'festWert' }, fmtZeit(sollZeit()), h('span', { class: 'grau' }, ' · ändern im Zahnrad auf dem Startbildschirm'))),
+        wahl('Bildausschnitt', ausChips.el, ausHinweis)),
       platz,
-      h('p', { class: 'warn' }, 'Stromsparmodus aus? Das Batterie-Symbol darf nicht gelb sein.'),
       satz,
+      h('p', { class: 'warn' }, 'Stromsparmodus aus? Das Batterie-Symbol darf nicht gelb sein.'),
       h('div', { class: 'fest' }, knopf));
     artStand(); hinweise();
-    G.kameraAn().then((s) => {
-      if (!aktiv) { G.kameraAus(); return; }
-      strom = s; video.srcObject = s; video.play().catch(() => {});
-      kameraBereit = true; knopfStand();
-    }).catch((e) => { meldung.textContent = G.kameraFehlerText(e); });
+    kameraStart(false);
   }
+  const sichtbar = () => { if (beiSichtbar) beiSichtbar(); };
+  document.addEventListener('visibilitychange', sichtbar);
+  window.addEventListener('pageshow', sichtbar);
 
   // ---------- Bühne: Vorbereitung und Aufnahme ----------
   function begriffZeigen() {
+    if (gestartet) return;                       // doppeltes Antippen
+    // Liefert die Kamera nichts mehr, gäbe es eine Aufnahme ohne Bild und eine stehende Uhr: erst neu starten.
+    if (!G.stromLebt(strom) || G.bildFehlt(strom)) { if (kameraNeu) kameraNeu('Die Kamera war unterbrochen und startet neu. Danach bitte noch einmal antippen.'); return; }
+    gestartet = true;
     G.tonAn(); G.wachAn();                       // beides muss direkt im Antippen starten
     const ganz = E.ausschnitt === 'ganz';
     const soll = sollZeit(), nurTon = soll > 1200;
@@ -151,6 +197,19 @@ export function redeAblauf(app, E, merke, opt = {}) {
     let t0 = performance.now(), phase = 'vor', gesignalt = false, beendet = false;
     let eingemessen = false, schwelle = 0.008, boden = null, pegelMax = 0, letzteStimme = 0, frage = null, hand = 0, handStart = 0, handTick = 0;
 
+    // Geht vor oder beim Start der Aufnahme etwas schief, zurück zur Seite davor – mit Erklärung statt stehender Uhr.
+    async function zurueck(text) {
+      beendet = true; clearInterval(takt);
+      if (aufnahme) { try { await aufnahme.stopp(); } catch (e) {} aufnahme = null; }
+      if (ton) { try { await ton.stopp(); } catch (e) {} ton = null; }
+      if (messer) { messer.stopp(); messer = null; }
+      if (meta) { try { await uebungLoeschen(meta.id); } catch (e) {} meta = null; }
+      if (!aktiv) return;
+      G.wachAus();
+      document.body.classList.remove('buehne'); video.classList.remove('versteckt');
+      einrichten(text);
+    }
+
     async function starte() {
       phase = 'rede';
       if (proben.length >= 5) { proben.sort((a, c) => a - c); boden = proben[Math.floor(proben.length * 0.2)]; schwelle = Math.min(0.02, Math.max(0.004, boden * 3)); eingemessen = true; }
@@ -160,7 +219,7 @@ export function redeAblauf(app, E, merke, opt = {}) {
                aufbau: modus === 'rede' ? (redeArt() === 'begriff' ? E.aufbau : redeArt()) : '', einstieg: b.einstieg || '', heute: heute ? heute.nr : 0, ausschnitt: E.ausschnitt, soll, ist: 0, typ: nurTon ? 'ton' : 'video', status: 'läuft', groesse: 0 };
       uebungSpeichern(meta).catch(() => {});
       try { aufnahme = G.aufnahmeStarten(strom, meta.id, nurTon); }
-      catch (e) { status.textContent = 'Die Aufnahme lässt sich nicht starten.'; clearInterval(takt); return; }
+      catch (e) { zurueck('Die Aufnahme ließ sich nicht starten (' + (e.name || e.message || 'Fehler') + '). Bitte noch einmal versuchen.'); return; }
       G.signal(1, 660);
       t0 = performance.now();
       G.pcmStarten(strom, meta.id).then((p) => { if (beendet) p.stopp(); else { ton = p; meta.tonVersatz = Math.round((p.beginn - t0) / 100) / 10; } }).catch(() => {});
@@ -177,9 +236,10 @@ export function redeAblauf(app, E, merke, opt = {}) {
       const el = (performance.now() - t0) / 1000;
       if (art !== 'tippen') G.signal(3, 660);
       status.textContent = 'Speichere …'; fertigKnopf.hidden = true; abbruch.hidden = true; frageBox.hidden = true;
-      const r = await aufnahme.stopp();
+      let r = { mime: '', groesse: 0, stuecke: 0, fehler: null };
+      try { r = await aufnahme.stopp(); } catch (e) { r.fehler = e; }
       aufnahme = null;
-      if (ton) { await ton.stopp(); ton = null; meta.tonspur = true; }
+      if (ton) { try { await ton.stopp(); meta.tonspur = true; } catch (e) {} ton = null; }
       Object.assign(meta, {
         ist: Math.round(Math.max(1, istZeit == null ? el : istZeit) * 10) / 10, dauerAufnahme: Math.round(el), status: 'fertig', beendetDurch: art,
         mime: r.mime, groesse: r.groesse, stuecke: r.stuecke, fehler: r.fehler ? String(r.fehler.message || r.fehler) : '',
@@ -192,20 +252,28 @@ export function redeAblauf(app, E, merke, opt = {}) {
     async function abbrechen() {
       if (phase === 'rede' && !confirm('Übung abbrechen? Die Aufnahme wird gelöscht.')) return;
       beendet = true; clearInterval(takt);
-      if (aufnahme) { await aufnahme.stopp(); aufnahme = null; }
-      if (ton) { await ton.stopp(); ton = null; }
+      if (aufnahme) { try { await aufnahme.stopp(); } catch (e) {} aufnahme = null; }
+      if (ton) { try { await ton.stopp(); } catch (e) {} ton = null; }
       if (meta) { try { await uebungLoeschen(meta.id); } catch (e) {} }
       geheZu('#/');
     }
 
-    takt = setInterval(() => {
+    function tick() {
+      if (beendet) return;
       const el = (performance.now() - t0) / 1000;
-      const p = messer ? messer.lies() : null;
+      // Fällt die Kamera aus (Anruf, andere App, Bildschirmsperre): vor der Aufnahme zurück, in der Aufnahme sichern, was da ist.
+      if (!G.stromLebt(strom)) {
+        if (phase === 'vor') zurueck('Die Kamera wurde unterbrochen. Sie startet neu, dann bitte noch einmal antippen.');
+        else if (aufnahme) beenden('abbruch');
+        return;
+      }
+      let p = null;
+      try { p = messer ? messer.lies() : null; } catch (e) {}
       if (phase === 'vor') {
         if (p != null) proben.push(p);
         const rest = vorZeit - el;
         zeigeUhr(String(Math.max(0, Math.ceil(rest))));
-        if (rest <= 0) starte();
+        if (rest <= 0) starte().catch((e) => zurueck('Die Aufnahme ließ sich nicht starten (' + (e.name || e.message || 'Fehler') + ').'));
         return;
       }
       // Uhr
@@ -249,7 +317,10 @@ export function redeAblauf(app, E, merke, opt = {}) {
         handInfo.textContent = hand >= 2 ? '✋ Handzeichen erkannt …' : 'Beenden: beide Hände über den Kopf oder ' + STILLE_SEK + ' Sekunden schweigen';
         if (hand >= 5) beenden('handzeichen', handStart);
       }
-    }, 100);
+    }
+    // Ein Fehler in einem Takt (zum Beispiel in der Handerkennung) darf die Uhr nicht anhalten.
+    takt = setInterval(() => { try { tick(); } catch (e) {} }, 100);
+    tick();
   }
 
   einrichten();

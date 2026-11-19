@@ -1,23 +1,23 @@
 // Rhetorik-Trainer · Startbildschirm, Einstellungen, Seitenwechsel
-import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2107';
-import { h, fuelle, kopf, chips, regler, gruppe, geheZu, REDEZEITEN } from './ui.js?v=2107';
-import { redeAblauf } from './rede.js?v=2107';
-import { uebungSeite, eigeneSeite } from './seiten.js?v=2107';
-import { verlaufSeite, startInfo } from './verlauf.js?v=2107';
-import { autoSeite } from './auto-seite.js?v=2107';
-import { lauf, laufend } from './messlauf.js?v=2107';
-import { autoStand } from './auto.js?v=2107';
-import { eigeneBegriffe } from './begriffe.js?v=2107';
-import { eigene } from './impulse.js?v=2107';
-import { heuteSeite, heuteStand } from './heute.js?v=2107';
-import { stimmeSeite } from './stimme.js?v=2107';
-import { merkSeite } from './merk.js?v=2107';
+import { laden, speichern, STANDARD, GRENZEN, fmtZeit, signalFuer } from './store.js?v=2200';
+import { h, fuelle, kopf, chips, regler, klappe, geheZu, REDEZEITEN, klappenVergessen, merkeHerkunft } from './ui.js?v=2200';
+import { redeAblauf } from './rede.js?v=2200';
+import { uebungSeite, eigeneSeite } from './seiten.js?v=2200';
+import { verlaufSeite, startInfo } from './verlauf.js?v=2200';
+import { autoSeite } from './auto-seite.js?v=2200';
+import { lauf, laufend } from './messlauf.js?v=2200';
+import { autoStand } from './auto.js?v=2200';
+import { eigeneBegriffe } from './begriffe.js?v=2200';
+import { eigene } from './impulse.js?v=2200';
+import { heuteSeite, heuteStand } from './heute.js?v=2200';
+import { stimmeSeite } from './stimme.js?v=2200';
+import { merkSeite } from './merk.js?v=2200';
 
-const VERSION = 2107;
+const VERSION = 2200;
 // Ab 20.1 steckt die Unterstufe in der Zahl: 2001 wird als „20.1“ angezeigt.
 const fassungText = (n) => (n >= 1000 ? Math.floor(n / 100) + '.' + (n % 100) : String(n));
 const app = document.getElementById('app');
-let E = laden();
+const E = laden();
 // E bleibt dasselbe Objekt: Die laufende Seite (zum Beispiel die Einrichtung einer Rede) sieht so jede weitere Änderung.
 const merke = (k, v) => { E[k] = v; Object.assign(E, speichern(E)); };
 
@@ -87,39 +87,50 @@ function einstellungen() {
   const schlag = regler({ min: 10, max: 300, schritt: 5, knopf: 5, wert: E.antwortSchlag, text: fmtZeit, beiWechsel: (v) => merke('antwortSchlag', v) });
   const einw = regler({ min: 10, max: 300, schritt: 5, knopf: 5, wert: E.antwortEinwand, text: fmtZeit, beiWechsel: (v) => merke('antwortEinwand', v) });
   const fach = regler({ min: 0, max: 100, schritt: 1, knopf: 1, wert: E.fachAnteil, text: (v) => v + ' %', beiWechsel: (v) => merke('fachAnteil', v) });
-  const signalChips = chips([[0, 'aus'], [10, '10 s'], [30, '30 s'], [60, '60 s']], E.signal, (v) => { merke('signal', v); hinweise(); });
-  const aufbauChips = chips([['klassisch', 'klassisch'], ['frei', 'frei']], E.aufbau, (v) => merke('aufbau', v));
-  const transChips = chips([['mittel', 'schnell'], ['gross', 'genau']], E.transkript, (v) => merke('transkript', v));
+  const wert = (t) => h('span', { class: 'wert' }, t);
+  const signalText = () => (E.signal ? E.signal + ' s' : 'aus'), transText = () => (E.transkript === 'gross' ? 'genau' : 'schnell');
+  const signalWert = wert(signalText()), aufbauWert = wert(E.aufbau), transWert = wert(transText());
+  const signalChips = chips([[0, 'aus'], [10, '10 s'], [30, '30 s'], [60, '60 s']], E.signal, (v) => { merke('signal', v); signalWert.textContent = signalText(); hinweise(); });
+  const aufbauChips = chips([['klassisch', 'klassisch'], ['frei', 'frei']], E.aufbau, (v) => { merke('aufbau', v); aufbauWert.textContent = E.aufbau; });
+  const transChips = chips([['mittel', 'schnell'], ['gross', 'genau']], E.transkript, (v) => { merke('transkript', v); transWert.textContent = transText(); });
   hinweise();
 
+  // Jede Einstellung ist eine Zeile mit ihrem Wert. Antippen klappt die Bedienung auf.
+  const weiter = (text, wert, ziel) => h('button', { class: 'reihe', onclick: () => geheZu(ziel) }, h('span', {}, text), h('span', { class: 'wert' }, wert), h('span', { class: 'pfeil' }, '›'));
   return [
     kopf('Einstellungen'),
     updateKnopf(),
-    gruppe('Redezeit Stegreifrede', redeWert,
-      h('div', { class: 'hinweis' }, 'Schnellwahl in Minuten'), redeChips.el,
-      h('div', { class: 'hinweis' }, 'Oder frei eingeben'), frei, fehler, redeHinweis),
-    gruppe('Vorbereitungszeit', vorb.anzeige, vorb.zeile),
-    gruppe('Antwortzeit Schlagfertigkeit', schlag.anzeige, schlag.zeile),
-    gruppe('Antwortzeit Einwand', einw.anzeige, einw.zeile),
-    gruppe('Signalton vor Schluss', null, signalChips.el, signalHinweis),
-    gruppe('Aufbau der Rede', null, aufbauChips.el,
-      h('div', { class: 'hinweis' }, 'Gilt für die Rede über einen Begriff. Klassisch: Einstieg, drei Argumente, Wiederholung, Aufforderung, Schluss. Frei: eigener Aufbau, der Coach wertet das nicht ab.')),
-    gruppe('Anteil Fachbegriffe', fach.anzeige, fach.zeile),
-    gruppe('Transkript', null, transChips.el,
-      h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht etwa 5 Minuten und lädt einmalig rund 250 MB.')),
-    h('button', { class: 'breit', onclick: () => geheZu('#/auto') }, 'Automatische Auswertung (' + (autoStand().bereit ? 'eingerichtet' : 'nicht eingerichtet') + ')'),
-    h('button', { class: 'breit', onclick: () => geheZu('#/eigene') }, 'Eigene Begriffe (' + eigeneBegriffe().length + ')'),
-    h('button', { class: 'breit', onclick: () => geheZu('#/eigene/angriff') }, 'Eigene Aussagen für Schlagfertigkeit (' + eigene('angriff').length + ')'),
-    h('button', { class: 'breit', onclick: () => geheZu('#/eigene/einwand') }, 'Eigene Einwände (' + eigene('einwand').length + ')'),
-    h('button', { class: 'breit', onclick: () => {
-      if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { E = speichern({ ...STANDARD }); zeigen(); }
+    h('h2', {}, 'Zeiten'),
+    h('div', { class: 'stapel' },
+      klappe('e.rede', 'Redezeit', redeWert,
+        h('div', { class: 'hinweis' }, 'Minuten'), redeChips.el,
+        h('div', { class: 'hinweis' }, 'Oder frei eingeben'), frei, fehler, redeHinweis),
+      klappe('e.vorb', 'Vorbereitung', vorb.anzeige, vorb.zeile),
+      klappe('e.schlag', 'Antwort Schlagfertigkeit', schlag.anzeige, schlag.zeile),
+      klappe('e.einw', 'Antwort Einwand', einw.anzeige, einw.zeile),
+      klappe('e.signal', 'Signalton vor Schluss', signalWert, signalChips.el, signalHinweis)),
+    h('h2', {}, 'Rede und Messung'),
+    h('div', { class: 'stapel' },
+      klappe('e.aufbau', 'Aufbau der Rede', aufbauWert, aufbauChips.el,
+        h('div', { class: 'hinweis' }, 'Gilt für die Rede über einen Begriff. Klassisch: Einstieg, drei Argumente, Wiederholung, Aufforderung, Schluss. Frei: eigener Aufbau, der Coach wertet das nicht ab.')),
+      klappe('e.fach', 'Anteil Fachbegriffe', fach.anzeige, fach.zeile),
+      klappe('e.trans', 'Transkript', transWert, transChips.el,
+        h('div', { class: 'hinweis' }, 'Schnell: eine 5-Minuten-Rede braucht etwa 3 Minuten. Genau: versteht Fachwörter besser, braucht etwa 5 Minuten und lädt einmalig rund 250 MB.')),
+      weiter('Automatische Auswertung', autoStand().bereit ? 'eingerichtet' : 'fehlt', '#/auto')),
+    h('h2', {}, 'Eigene Texte'),
+    h('div', { class: 'stapel' },
+      weiter('Begriffe', String(eigeneBegriffe().length), '#/eigene'),
+      weiter('Aussagen für Schlagfertigkeit', String(eigene('angriff').length), '#/eigene/angriff'),
+      weiter('Einwände', String(eigene('einwand').length), '#/eigene/einwand')),
+    h('button', { class: 'breit leise', onclick: () => {
+      if (confirm('Alle Einstellungen auf Standard zurücksetzen?')) { Object.assign(E, speichern({ ...STANDARD })); zeigen(); }
     } }, 'Auf Standard zurücksetzen'),
     h('div', { class: 'fuss grau' }, 'Fassung ' + fassungText(VERSION)),
   ];
 }
 
 // ---------- Seitenwechsel ----------
-let aufraeumen = null;
+let aufraeumen = null, letzterPfad = '';
 function zeigen() {
   // Während einer Messung bleibt die Ergebnisseite stehen. Verlassen geht nur nach Rückfrage und bricht die Messung sauber ab.
   if (laufend.id) {
@@ -130,6 +141,10 @@ function zeigen() {
   }
   if (aufraeumen) { try { aufraeumen(); } catch (e) {} aufraeumen = null; }
   const pfad = location.hash.replace(/^#\/?/, '');
+  // Woher kommt man? Danach richtet sich „Zurück“ auf der Ergebnisseite. Der Startbildschirm schließt alle Aufklappzeilen.
+  if (pfad.startsWith('uebung/') && !letzterPfad.startsWith('uebung/')) merkeHerkunft('#/' + letzterPfad);
+  if (pfad === '') klappenVergessen();
+  letzterPfad = pfad;
   window.scrollTo(0, 0);
   if (pfad === 'rede') { aufraeumen = redeAblauf(app, E, merke); return; }
   if (pfad.startsWith('uebung/')) { aufraeumen = uebungSeite(app, pfad.slice(7)); return; }

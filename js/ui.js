@@ -19,6 +19,11 @@ export function fuelle(el, ...kinder) {
 
 export const geheZu = (ziel) => { location.hash = ziel; };
 
+// „Zurück“ auf der Ergebnisseite führt dorthin, woher man kam: in den Verlauf oder zum Start.
+let herkunft = '#/';
+export function merkeHerkunft(hash) { herkunft = hash === '#/verlauf' ? '#/verlauf' : '#/'; }
+export const zurueckZiel = () => herkunft;
+
 export function kopf(titel, { zurueck = true, ziel = '#/', rechts = null } = {}) {
   return h('div', { class: 'kopf' },
     zurueck ? h('button', { class: 'zurueck', onclick: () => geheZu(ziel) }, '‹ Zurück') : h('h1', {}, titel),
@@ -63,21 +68,25 @@ export function regler({ min, max, schritt, knopf, wert, text, beiWechsel }) {
   return { anzeige, zeile };
 }
 
-// Aufklappbarer Kasten: zu ist er eine Zeile mit Titel und Kurzwert. Merkt sich je Name, ob er offen war.
-const K_KLAPP = 'rt.klapp.offen';
-function offeneKlappen() { try { return JSON.parse(localStorage.getItem(K_KLAPP)) || []; } catch (e) { return []; } }
+// Aufklappbare Zeilen: Beim Öffnen einer Seite sind alle zu. Was von Hand aufgeklappt wurde, bleibt offen,
+// solange man zwischen den Seiten wechselt. Der Startbildschirm und ein Neustart der App schließen alles wieder.
+// Gemerkt wird je Seite (Adresse) und Name, nur im Arbeitsspeicher.
+const offen = new Set();
+try { localStorage.removeItem('rt.klapp.offen'); } catch (e) {}      // Rest aus älteren Fassungen
+const schluessel = (name) => location.hash + '|' + name;
+export const istOffen = (name) => offen.has(schluessel(name));
+export function merkeOffen(name, an) { if (an) offen.add(schluessel(name)); else offen.delete(schluessel(name)); }
+export function klappenVergessen() { offen.clear(); }
 // klasse: 'gruppe' (Kasten) oder 'frei' (ohne Rahmen). kopfInhalt: was in der Kopfzeile steht.
 export function klapp(name, klasse, kopfInhalt, ...inhalt) {
   const d = h('details', { class: 'klapp ' + klasse }, h('summary', {}, kopfInhalt), inhalt);
-  if (offeneKlappen().includes(name)) d.open = true;
-  d.addEventListener('toggle', () => {
-    const l = offeneKlappen().filter((x) => x !== name);
-    if (d.open) l.push(name);
-    try { localStorage.setItem(K_KLAPP, JSON.stringify(l)); } catch (e) {}
-  });
+  const k = schluessel(name);
+  if (offen.has(k)) d.open = true;
+  d.addEventListener('toggle', () => { if (d.open) offen.add(k); else offen.delete(k); });
   return d;
 }
-export const klappe = (name, titel, wert, ...inhalt) => klapp(name, 'gruppe', [h('span', {}, titel), wert ? h('span', { class: 'wert' }, wert) : null], ...inhalt);
+// wert: kurzer Text oder ein fertiges Element, das rechts in der Zeile steht
+export const klappe = (name, titel, wert, ...inhalt) => klapp(name, 'gruppe', [h('span', {}, titel), !wert ? null : typeof wert === 'string' ? h('span', { class: 'wert' }, wert) : wert], ...inhalt);
 
 export function gruppe(titel, anzeige, ...inhalt) {
   return h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, h('span', {}, titel), anzeige), inhalt);

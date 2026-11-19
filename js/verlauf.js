@@ -1,10 +1,10 @@
 // Verlauf: Kurven und Liste aller Übungen. Dazu die Zeile für den Startbildschirm (Serie, Aufgabe für morgen).
-import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue } from './ui.js?v=2107';
-import { fmtZeit } from './store.js?v=2107';
-import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2107';
-import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2107';
-import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2107';
-import { entwirren } from './auto.js?v=2107';
+import { h, fuelle, kopf, geheZu, datumText, mb, chips, menue, istOffen, merkeOffen } from './ui.js?v=2200';
+import { fmtZeit } from './store.js?v=2200';
+import { alleUebungen, speicherStand, uebungLoeschen } from './db.js?v=2200';
+import { noteZahl, serie, aufgabeFuerMorgen, artName } from './auswertung.js?v=2200';
+import { sicherungBauen, sicherungPruefen, sicherungEinlesen, dateiAbgeben } from './sicherung.js?v=2200';
+import { entwirren } from './auto.js?v=2200';
 
 const MODUS = { rede: 'Stegreifrede', schlag: 'Schlagfertigkeit', einwand: 'Einwand' };
 const komma = (x) => String(x).replace('.', ',');
@@ -80,7 +80,7 @@ function sicherungTeil(anzahl) {
 }
 
 const KURVEN = [['note', 'Note'], ['fuell', 'Füllwörter'], ['tempo', 'Tempo'], ['zeit', 'Zeit'], ['blick', 'Blick']];
-let kurveWahl = 'note', listeZu = false, rubrik = 'alle';      // gilt, solange die App offen ist
+let kurveWahl = 'note', rubrik = 'alle';      // gilt, solange die App offen ist
 const RUBRIKEN = ['Stegreifrede', 'Überzeugungsrede', 'Geschichte', 'Schlagfertigkeit', 'Einwand'];
 
 export function verlaufSeite(app) {
@@ -142,11 +142,11 @@ export function verlaufSeite(app) {
       const zeilen = h('div', { class: 'stapel rollListe' });
       function zeichne() {
         const n = auswahl ? auswahl.size : 0;
-        const zu = listeZu && !auswahl;
+        const zu = !istOffen('verlauf.liste') && !auswahl;
         zeilen.hidden = zu;
-        fuelle(titel, h('button', { class: 'klappKopf', 'aria-expanded': String(!zu), onclick: () => { listeZu = !zu; auswahl = null; zeichne(); } },
+        fuelle(titel, h('button', { class: 'klappKopf', 'aria-expanded': String(!zu), onclick: () => { merkeOffen('verlauf.liste', zu); auswahl = null; zeichne(); } },
             h('h2', {}, 'Übungen (' + liste.length + ')'), h('span', { class: 'winkel' + (zu ? '' : ' auf') }, '›')),
-          h('button', { class: 'pille' + (auswahl ? ' an' : ''), onclick: () => { auswahl = auswahl ? null : new Set(); listeZu = false; zeichne(); } }, auswahl ? 'Fertig' : 'Auswählen'));
+          h('button', { class: 'pille' + (auswahl ? ' an' : ''), onclick: () => { auswahl = auswahl ? null : new Set(); merkeOffen('verlauf.liste', true); zeichne(); } }, auswahl ? 'Fertig' : 'Auswählen'));
         fuelle(leiste, !auswahl ? null : [
           h('div', { class: 'hinweis' }, 'Tippe die Übungen an, die du löschen willst.'),
           h('div', { class: 'zwei' },

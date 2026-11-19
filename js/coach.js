@@ -1,11 +1,11 @@
 // Ergebnisseite, Teil „Auswertung“: automatisch über die Anthropic-Schnittstelle oder von Hand über die Claude-App.
-import { h, fuelle, geheZu, klappe } from './ui.js?v=2107';
-import { fmtZeit } from './store.js?v=2107';
-import { paketText, codeLesen } from './auswertung.js?v=2107';
-import { bilderLaden, uebungSpeichern } from './db.js?v=2107';
-import { md } from './md.js?v=2107';
-import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2107';
-import { wachAn, wachAus } from './geraet.js?v=2107';
+import { h, fuelle, geheZu, klappe } from './ui.js?v=2200';
+import { fmtZeit } from './store.js?v=2200';
+import { paketText, codeLesen } from './auswertung.js?v=2200';
+import { bilderLaden, uebungSpeichern } from './db.js?v=2200';
+import { md } from './md.js?v=2200';
+import { autoStand, autoModell, autoAuswerten, entwirren } from './auto.js?v=2200';
+import { wachAn, wachAus } from './geraet.js?v=2200';
 
 const PUNKT = { 1: 'erfüllt', 0.5: 'teilweise', 0: 'fehlt' };
 const dollar = (x) => (x < 0.01 ? 'unter 0,01' : x.toFixed(2).replace('.', ',')) + ' US-Dollar';
@@ -89,40 +89,48 @@ export function coachTeil(u, beiNeu) {
     const vonHand = [
       teilen,
       h('div', { class: 'hinweis' }, '1. Im Teilen-Menü „Claude“ wählen, dort das Projekt „Rhetorik-Coach“, und abschicken. 2. Die Antwort des Coachs lange drücken und kopieren. 3. Hierher zurück und „Ergebnis einfügen“ antippen.'),
-      h('div', { class: 'zwei' }, h('button', { class: 'breit', disabled: !bereit, onclick: kopiere }, 'Text kopieren'), nurBilder),
       einfuegen, feldBox,
+      h('div', { class: 'zwei' }, h('button', { class: 'breit', disabled: !bereit, onclick: kopiere }, 'Text kopieren'), nurBilder),
     ];
 
     // ---------- Anzeige ----------
-    const e = u.ergebnis, a = u.auswertung;
+    const e = u.ergebnis, a = u.auswertung, bewertet = !!(e || u.feedback);
+    // Vor der Messung gibt es hier nichts zu tun.
+    if (!bereit && !bewertet) { fuelle(box, h('p', { class: 'grau' }, 'Folgt nach der Messung.')); if (beiNeu) beiNeu(); return; }
     const zeile = (x, y) => h('tr', {}, h('td', {}, x), h('td', {}, y));
-    const feedback = u.feedback ? h('details', {}, h('summary', {}, 'Feedback des Coachs'), h('div', { class: 'feedback md', lang: 'de' }, md(entwirren(u.feedback)))) : null;
-    if (feedback) feedback.open = true;       // Die Bewertung ist das Wichtigste: sie steht offen da
+    const punkte = e ? Object.entries(e.punkte) : [];
+    const erfuellt = punkte.filter(([, w]) => w === 1).length;
+    // Auswerten: ein Hauptknopf; alles Weitere liegt in einer Aufklappzeile.
+    const auswerten = auto.bereit ? [
+      autoKnopf, info,
+      h('div', { class: 'stapel' }, klappe('vonhand', 'Stattdessen von Hand über die Claude-App', '', vonHand,
+        h('div', { class: 'hinweis' }, 'Automatisch: Modell ' + autoModell().name + ', ' + autoModell().etwa + '. Die App schickt Transkript, Messwerte und Einzelbilder an Anthropic.'))),
+    ] : [
+      vonHand, info,
+      h('button', { class: 'breit leise', onclick: () => geheZu('#/auto') }, 'Automatische Auswertung einrichten'),
+    ];
+    const nochmalBox = bewertet ? h('div', { class: 'gruppe nochmalBox', hidden: !nochmal }, h('div', { class: 'titel' }, 'Noch einmal auswerten'), auswerten) : null;
     fuelle(box,
-      e || u.feedback ? h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Bewertung des Coachs'),
-        e ? h('div', { class: 'noteGross' }, h('span', {}, 'Note'), e.note) : null,
-        e && Object.keys(e.punkte).length ? h('table', { class: 'werte' }, Object.entries(e.punkte).map(([n, w]) => zeile(n, PUNKT[w] || String(w)))) : null,
-        e && e.aufgabe ? h('div', { class: 'aufgabe' }, h('div', { class: 'grau' }, 'Aufgabe für morgen'), entwirren(e.aufgabe)) : null,
+      bewertet ? [
+        e ? h('div', { class: 'gruppe' },
+          h('div', { class: 'noteGross' }, h('span', {}, 'Note'), e.note),
+          e.aufgabe ? h('div', { class: 'aufgabe' }, h('div', { class: 'grau' }, 'Aufgabe für morgen'), entwirren(e.aufgabe)) : null) : null,
         a && a.ohneCode ? h('div', { class: 'hinweis' }, 'Die Antwort enthielt keinen Ergebniscode. Note und Aufgabe für morgen fehlen deshalb im Verlauf.') : null,
-        a && a.abgeschnitten ? h('div', { class: 'hinweis' }, 'Die Antwort wurde wegen ihrer Länge abgeschnitten.') : null,
-        feedback,
-        a ? h('div', { class: 'hinweis' }, 'Automatisch ausgewertet mit ' + a.modell + '. Kosten dieser Auswertung: etwa ' + dollar(a.kosten) + '.') : null) : null,
-      (e || u.feedback ? (...x) => { const k = klappe('auswerten', 'Noch einmal auswerten', '', x); k.classList.add('nochmalBox'); k.hidden = !nochmal; k.open = true; return k; } : (...x) => h('div', { class: 'gruppe' }, h('div', { class: 'titel' }, 'Auswertung'), x))(
-        bereit ? null : h('div', { class: 'hinweis' }, 'Erst „Messwerte berechnen“, dann auswerten lassen.'),
-        auto.bereit ? [
-          autoKnopf,
-          h('div', { class: 'hinweis' }, 'Modell: ' + autoModell().name + ', ' + autoModell().etwa + '. Die App schickt Transkript, Messwerte und Einzelbilder an Anthropic.'),
-          info,
-          h('details', {}, h('summary', {}, 'Stattdessen von Hand über die Claude-App'), vonHand),
-        ] : [
-          vonHand, info,
-          h('button', { class: 'breit leise', onclick: () => geheZu('#/auto') }, 'Automatische Auswertung einrichten'),
-        ]));
+        h('div', { class: 'stapel' },
+          u.feedback ? klappe('feedback', 'Feedback des Coachs', '',
+            h('div', { class: 'feedback md', lang: 'de' }, md(entwirren(u.feedback))),
+            a && a.abgeschnitten ? h('div', { class: 'hinweis' }, 'Die Antwort wurde wegen ihrer Länge abgeschnitten.') : null,
+            a ? h('div', { class: 'hinweis' }, 'Automatisch ausgewertet mit ' + a.modell + '. Kosten dieser Auswertung: etwa ' + dollar(a.kosten) + '.') : null) : null,
+          punkte.length ? klappe('punkte', 'Kriterien', erfuellt + ' von ' + punkte.length + ' erfüllt',
+            h('table', { class: 'werte' }, punkte.map(([n, w]) => zeile(n, PUNKT[w] || String(w))))) : null),
+        nochmalBox,
+      ] : auswerten);
     if (beiNeu) beiNeu();
   }
   zeichne();
   box.neu = zeichne;
   // Aus dem Menü der Ergebnisseite: den Bereich „Noch einmal auswerten“ zeigen
   box.nochmal = () => { nochmal = true; zeichne(); const k = box.querySelector('.nochmalBox'); if (k) k.scrollIntoView({ block: 'center' }); };
+  box.zu = () => { nochmal = false; };
   return box;
 }

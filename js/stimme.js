@@ -1,7 +1,7 @@
 // Stimme aufwärmen: geführte Abfolge ohne Aufnahme und ohne Auswertung.
 // Jeder Schritt nennt die Zahl der Wiederholungen und hat einen Timer, der Dauer oder Rhythmus vorgibt.
-import { h, fuelle, kopf, geheZu } from './ui.js?v=2107';
-import { wachAn, wachAus, tonAn, signal } from './geraet.js?v=2107';
+import { h, fuelle, kopf, geheZu } from './ui.js?v=2200';
+import { wachAn, wachAus, tonAn, signal } from './geraet.js?v=2200';
 
 // Bausteine für den Timer: eine Folge von Abschnitten { text, sek, teil, runde }.
 // teil = welcher Eintrag der Lautzeile gerade dran ist (wird hervorgehoben), -1 = Pause.

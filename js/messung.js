@@ -1,6 +1,6 @@
 // Messung einer Übung: Ton laden, im Arbeits-Thread messen und transkribieren, Ergebnis speichern.
-import { pcmLaden, aufnahmeDatei, uebungSpeichern } from './db.js?v=2107';
-import { sprachAnalyse } from './analyse.js?v=2107';
+import { pcmLaden, aufnahmeDatei, uebungSpeichern } from './db.js?v=2200';
+import { sprachAnalyse } from './analyse.js?v=2200';
 
 // Zwei Transkript-Modelle: schnell oder genau. minJeMin = geschätzte Rechenzeit je Redeminute (iPhone 16 Pro).
 export const MODELLE = {
@@ -35,7 +35,7 @@ async function tonLaden(u) {
 
 function einLauf(audio, dauer, melde, modell) {
   return new Promise((ja, nein) => {
-    const w = new Worker('js/mess-worker.js?v=2107', { type: 'module' });
+    const w = new Worker('js/mess-worker.js?v=2200', { type: 'module' });
     let wache, stimme = null, geladen = false;
     const ende = (fn, wert) => { clearTimeout(wache); w.terminate(); fn(wert); };
     const stelleWache = () => { clearTimeout(wache); wache = setTimeout(() => ende(nein, Object.assign(new Error('haengt'), { haengt: true, geladen })), modell.stillMax); };

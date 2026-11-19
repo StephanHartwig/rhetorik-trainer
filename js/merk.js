@@ -1,5 +1,5 @@
 // Merkzettel: das Wichtigste zum Nachschlagen, in eigenen Worten. Jede Zeile lässt sich aufklappen.
-import { h, fuelle, kopf, klappe } from './ui.js?v=2107';
+import { h, fuelle, kopf, klappe } from './ui.js?v=2200';
 
 const liste = (...punkte) => h('ul', { class: 'merk' }, punkte.map((p) => h('li', {}, p)));
 const nummern = (...punkte) => h('ol', { class: 'merk' }, punkte.map((p) => h('li', {}, p)));
